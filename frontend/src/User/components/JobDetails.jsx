@@ -47,7 +47,7 @@ const JobDetails = () => {
   const fetchJobDetails = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`http://localhost:5000/api/jobs/${id}`);
+      const response = await axios.get(`https://project-job-i2vd.vercel.app/api/jobs/${id}`);
       
       if (response.data.success) {
         setJob(response.data.job);
@@ -68,7 +68,7 @@ const JobDetails = () => {
       // Try the check-application endpoint first
       try {
         const response = await axios.get(
-          `http://localhost:5000/api/jobs/${id}/check-application/${user._id}`
+          `https://project-job-i2vd.vercel.app/api/jobs/${id}/check-application/${user._id}`
         );
         
         if (response.data.success) {
@@ -204,7 +204,7 @@ const JobDetails = () => {
       
       // ✅ IMPORTANT: Use this API call to apply
       const response = await axios.post(
-        `http://localhost:5000/api/jobs/${id}/apply`,
+        `https://project-job-i2vd.vercel.app/api/jobs/${id}/apply`,
         applicationData,
         {
           headers: {
