@@ -162,7 +162,7 @@ const JobPostForm = () => {
       
       // Send to backend API
       const response = await axios.post(
-        "http://localhost:5000/api/jobs",
+        "https://project-job-i2vd.vercel.app/api/jobs",
         jobData
       );
       
