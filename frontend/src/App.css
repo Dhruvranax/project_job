@@ -1,0 +1,54 @@
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.dark-theme {
+  background-color: #121212;
+  color: #ffffff;
+}
+
+.light-theme {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background-color: inherit;
+  border-bottom: 1px solid #ccc;
+}
+
+.theme-toggle {
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  border: none;
+  border-radius: 6px;
+  background-color: #4a4a4a;
+  color: white;
+  font-weight: bold;
+}
+
+.light-theme .theme-toggle {
+  background-color: #f0f0f0;
+  color: #000;
+}
+
+/* Footer */
+.footer {
+  padding: 1rem 2rem;
+  text-align: center;
+  border-top: 1px solid #ccc;
+  background-color: inherit;
+}
+
+/* Home */
+.home {
+  padding: 2rem;
+  text-align: center;
+}

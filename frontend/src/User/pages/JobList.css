@@ -1,0 +1,199 @@
+.job-list-page {
+  min-height: 100vh;
+  background-color: #f8f9fa;
+}
+
+.job-list-page .sticky-top {
+  z-index: 1020;
+}
+
+.job-list-page .card {
+  border: none;
+  border-radius: 12px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.job-list-page .card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1) !important;
+}
+
+.job-list-page .suggestions-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  max-height: 300px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.job-list-page .suggestions-dropdown .list-group-item {
+  border: none;
+  border-bottom: 1px solid #f0f0f0;
+  padding: 10px 15px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.job-list-page .suggestions-dropdown .list-group-item:last-child {
+  border-bottom: none;
+}
+
+.job-list-page .suggestions-dropdown .list-group-item:hover {
+  background-color: #f8f9fa;
+}
+
+.job-list-page .empty-state-icon {
+  opacity: 0.5;
+}
+
+.job-list-page .badge {
+  font-weight: 500;
+  padding: 0.35em 0.65em;
+}
+
+.job-list-page .page-link {
+  border-radius: 6px;
+  margin: 0 2px;
+  border: 1px solid #dee2e6;
+}
+
+.job-list-page .page-item.active .page-link {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+}
+
+.job-list-page .btn-group .btn {
+  border-radius: 20px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .job-list-page .sticky-top {
+    position: relative !important;
+    top: 0 !important;
+  }
+  
+  .job-list-page .card {
+    margin-bottom: 1rem;
+  }
+  
+  .job-list-page .btn-group {
+    flex-wrap: wrap;
+  }
+  
+  .job-list-page .btn-group .btn {
+    margin-bottom: 5px;
+  }
+}
+
+/* Dark theme support */
+.dark-theme .job-list-page {
+  background-color: #1a1a1a;
+}
+
+.dark-theme .job-list-page .card {
+  background-color: #2d2d2d;
+  color: #ffffff;
+  border-color: #404040;
+}
+
+.dark-theme .job-list-page .card-header {
+  background-color: #363636;
+  border-color: #404040;
+}
+
+.dark-theme .job-list-page .form-control,
+.dark-theme .job-list-page .form-select {
+  background-color: #363636;
+  border-color: #404040;
+  color: #ffffff;
+}
+
+.dark-theme .job-list-page .form-control::placeholder {
+  color: #999999;
+}
+
+.dark-theme .job-list-page .suggestions-dropdown {
+  background-color: #363636;
+  border-color: #404040;
+}
+
+.dark-theme .job-list-page .suggestions-dropdown .list-group-item {
+  background-color: #363636;
+  color: #ffffff;
+  border-color: #404040;
+}
+
+.dark-theme .job-list-page .suggestions-dropdown .list-group-item:hover {
+  background-color: #404040;
+}
+
+.dark-theme .job-list-page .badge.bg-light {
+  background-color: #404040 !important;
+  color: #ffffff !important;
+}
+
+.dark-theme .job-list-page .text-muted {
+  color: #999999 !important;
+}
+
+.dark-theme .job-list-page .border-top {
+  border-color: #404040 !important;
+}
+
+/* Animation for job cards */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.job-list-page .col-md-6.col-lg-4.mb-4 {
+  animation: fadeIn 0.5s ease forwards;
+}
+
+.job-list-page .col-md-6.col-lg-4.mb-4:nth-child(1) { animation-delay: 0.1s; }
+.job-list-page .col-md-6.col-lg-4.mb-4:nth-child(2) { animation-delay: 0.2s; }
+.job-list-page .col-md-6.col-lg-4.mb-4:nth-child(3) { animation-delay: 0.3s; }
+.job-list-page .col-md-6.col-lg-4.mb-4:nth-child(4) { animation-delay: 0.4s; }
+.job-list-page .col-md-6.col-lg-4.mb-4:nth-child(5) { animation-delay: 0.5s; }
+.job-list-page .col-md-6.col-lg-4.mb-4:nth-child(6) { animation-delay: 0.6s; }
+
+.job-list-page {
+  min-height: calc(100vh - 200px);
+}
+
+.job-list-page .card {
+  border-radius: 10px;
+  border: 1px solid #e9ecef;
+  margin-bottom: 1rem;
+}
+
+.job-list-page .form-control,
+.job-list-page .form-select {
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+}
+
+.job-list-page .form-control:focus,
+.job-list-page .form-select:focus {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.job-list-page .user-avatar-small {
+  width: 40px;
+}

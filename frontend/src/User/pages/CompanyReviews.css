@@ -1,0 +1,83 @@
+.company-reviews-container {
+  max-width: 1000px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background-color: #fff;
+  border-radius: 10px;
+}
+
+.company-reviews-container h1 {
+  font-size: 2rem;
+  text-align: center;
+  color: #333;
+}
+
+.company-reviews-container p {
+  text-align: center;
+  color: #555;
+}
+
+.search-box {
+  display: flex;
+  justify-content: center;
+  margin: 1.5rem 0;
+  gap: 10px;
+}
+
+.search-box input {
+  width: 300px;
+  padding: 0.7rem;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+.search-box button {
+  padding: 0.7rem 1.2rem;
+  background-color: #2164f3;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.salary-link {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.salary-link a {
+  color: #2164f3;
+  text-decoration: underline;
+}
+
+h2 {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.company-cards {
+  display: flex;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.company-card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1rem;
+  width: 200px;
+  text-align: center;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.company-card img {
+  height: 50px;
+  margin-bottom: 0.5rem;
+}
+
+.stars {
+  color: #9b2c98;
+  font-size: 1.2rem;
+}

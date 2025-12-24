@@ -1,0 +1,304 @@
+/* pages/Pricing.css */
+.pricing-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.pricing-hero {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.pricing-hero h1 {
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Billing Toggle */
+.billing-toggle {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.toggle-container {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 10px 20px;
+  border-radius: 50px;
+  backdrop-filter: blur(10px);
+}
+
+.toggle-label {
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+  transition: color 0.3s ease;
+  position: relative;
+}
+
+.toggle-label.active {
+  color: white;
+  font-weight: 600;
+}
+
+.save-badge {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ff6b6b;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 60px;
+  height: 30px;
+}
+
+.toggle-checkbox {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
+  border-radius: 34px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 22px;
+  width: 22px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+
+.toggle-checkbox:checked + .toggle-slider {
+  background-color: #4CAF50;
+}
+
+.toggle-checkbox:checked + .toggle-slider:before {
+  transform: translateX(30px);
+}
+
+/* Pricing Cards */
+.pricing-card {
+  background: white;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  position: relative;
+  height: 100%;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+.pricing-card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+.pricing-card.selected {
+  border-color: #007bff;
+  box-shadow: 0 20px 40px rgba(0, 123, 255, 0.2);
+}
+
+.pricing-card.popular {
+  border-color: #ffc107;
+}
+
+.popular-badge {
+  position: absolute;
+  top: 15px;
+  right: -30px;
+  background: #ffc107;
+  color: #212529;
+  padding: 5px 30px;
+  transform: rotate(45deg);
+  font-weight: 600;
+  font-size: 0.8rem;
+  z-index: 1;
+}
+
+.card-header {
+  padding: 30px 20px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 1px solid #dee2e6;
+}
+
+.plan-name {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.price-display {
+  margin: 20px 0;
+}
+
+.price {
+  font-size: 3.5rem;
+  font-weight: 800;
+  color: #007bff;
+}
+
+.period {
+  font-size: 1.2rem;
+  color: #6c757d;
+  margin-left: 5px;
+}
+
+.savings-badge {
+  display: inline-block;
+  background: #28a745;
+  color: white;
+  padding: 5px 15px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-top: 10px;
+}
+
+.plan-description {
+  color: #6c757d;
+  font-size: 1rem;
+  margin-top: 15px;
+}
+
+.card-body {
+  padding: 30px;
+}
+
+.section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+}
+
+.features-list,
+.not-included-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.features-list li,
+.not-included-list li {
+  padding: 8px 0;
+  display: flex;
+  align-items: flex-start;
+}
+
+.features-list li i {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.not-included-list li {
+  color: #6c757d;
+}
+
+/* Comparison Table */
+.comparison-table th {
+  font-weight: 600;
+  color: #495057;
+  background-color: #f8f9fa;
+}
+
+.comparison-table td {
+  vertical-align: middle;
+}
+
+/* FAQ Section */
+.faq-item {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+  transition: transform 0.3s ease;
+}
+
+.faq-item:hover {
+  transform: translateY(-5px);
+}
+
+.faq-item h5 {
+  color: #333;
+  margin-bottom: 10px;
+}
+
+/* Payment Info */
+.payment-info .card {
+  border-width: 2px;
+}
+
+.payment-methods i {
+  opacity: 0.8;
+  transition: opacity 0.3s ease;
+}
+
+.payment-methods i:hover {
+  opacity: 1;
+}
+
+/* CTA Section */
+.cta-section {
+  background: white;
+  border-radius: 15px;
+  padding: 40px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .price {
+    font-size: 2.5rem;
+  }
+  
+  .period {
+    font-size: 1rem;
+  }
+  
+  .toggle-container {
+    flex-direction: column;
+    gap: 10px;
+    padding: 15px;
+  }
+  
+  .toggle-label {
+    text-align: center;
+  }
+  
+  .save-badge {
+    position: relative;
+    top: 0;
+    left: 0;
+    transform: none;
+    margin-top: 5px;
+    display: block;
+  }
+}

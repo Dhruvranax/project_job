@@ -1,0 +1,23 @@
+.admin-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-main {
+  flex: 1;
+  padding-top: 70px; /* Navbar height */
+  background-color: #f8f9fa;
+}
+
+.admin-layout .container-fluid {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .admin-main {
+    padding-top: 60px;
+  }
+}
