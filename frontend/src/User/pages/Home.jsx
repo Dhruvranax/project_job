@@ -91,10 +91,10 @@ const Home = () => {
     try {
       setLoading(true);
       setError("");
-      
+
       // Fetch active jobs for homepage
-      const response = await axios.get("http://localhost:5000/api/jobs/active");
-      
+      const response = await axios.get("https://project-job-i2vd.vercel.app/api/jobs/active");
+
       if (response.data.success) {
         setJobs(response.data.jobs || []);
       } else {
@@ -112,7 +112,7 @@ const Home = () => {
   // Fetch platform statistics
   const fetchStats = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/jobs/stats/summary");
+      const response = await axios.get("https://project-job-i2vd.vercel.app/api/jobs/stats/summary");
       if (response.data.success) {
         setStats(response.data.stats);
       }
@@ -132,10 +132,10 @@ const Home = () => {
   // Fetch user's applications
   const fetchUserApplications = async () => {
     if (!user?._id) return;
-    
+
     try {
       const response = await axios.get(
-        `http://localhost:5000/api/jobs/user/applications/${user._id}`
+        `https://project-job-i2vd.vercel.app/api/jobs/user/applications/${user._id}`
       );
       if (response.data.success) {
         setUserStats(prev => ({
@@ -150,16 +150,16 @@ const Home = () => {
 
   // Filter Jobs based on search
   const filteredJobs = jobs.filter((job) => {
-    const matchSearch = searchTerm === "" || 
+    const matchSearch = searchTerm === "" ||
       job.jobTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.companyName?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchType = filterType === "" || 
+
+    const matchType = filterType === "" ||
       job.jobType?.toLowerCase() === filterType.toLowerCase();
-    
-    const matchLocation = locationFilter === "" || 
+
+    const matchLocation = locationFilter === "" ||
       job.location?.toLowerCase().includes(locationFilter.toLowerCase());
-    
+
     return matchSearch && matchType && matchLocation;
   });
 
@@ -191,7 +191,7 @@ const Home = () => {
 
   const getUserGreeting = () => {
     if (!user) return "";
-    
+
     if (user.firstName && user.lastName) {
       return `Welcome back, ${user.firstName} ${user.lastName}!`;
     }
@@ -205,7 +205,7 @@ const Home = () => {
       const username = user.email.split('@')[0];
       return `Welcome back, ${username}!`;
     }
-    
+
     return "Welcome back!";
   };
 
@@ -213,7 +213,7 @@ const Home = () => {
     return (
       <div className="home-page">
         <div className="container text-center py-5">
-          <div className="spinner-border text-primary" style={{width: "3rem", height: "3rem"}} role="status">
+          <div className="spinner-border text-primary" style={{ width: "3rem", height: "3rem" }} role="status">
             <span className="visually-hidden">Loading...</span>
           </div>
           <p className="mt-3">Loading jobs from database...</p>
@@ -228,10 +228,10 @@ const Home = () => {
       <Carousel fade controls indicators className="hero-carousel">
         {heroCarouselData.map((slide) => (
           <Carousel.Item key={slide.id}>
-            <img 
-              className="d-block w-100 carousel-img" 
-              src={slide.imgUrl} 
-              alt={slide.title} 
+            <img
+              className="d-block w-100 carousel-img"
+              src={slide.imgUrl}
+              alt={slide.title}
               loading="lazy"
             />
             <Carousel.Caption className="carousel-caption-custom">
@@ -252,9 +252,9 @@ const Home = () => {
         {error && (
           <div className="alert alert-warning alert-dismissible fade show" role="alert">
             {error}
-            <button 
-              type="button" 
-              className="btn-close" 
+            <button
+              type="button"
+              className="btn-close"
               onClick={() => setError("")}
             ></button>
           </div>
@@ -352,7 +352,7 @@ const Home = () => {
                 <div className="card text-center shadow-sm h-100 feature-card">
                   <div className="card-body">
                     <div className="feature-icon mb-3">
-                      <span style={{fontSize: "2.5rem"}}>{feature.icon}</span>
+                      <span style={{ fontSize: "2.5rem" }}>{feature.icon}</span>
                     </div>
                     <h5 className="card-title">{feature.title}</h5>
                     <p className="card-text text-muted">{feature.desc}</p>
@@ -368,7 +368,7 @@ const Home = () => {
           <div className="card shadow">
             <div className="card-body">
               <h3 className="mb-4">🔍 Find Your Dream Job</h3>
-              
+
               <form onSubmit={handleSearchSubmit}>
                 <div className="row g-3">
                   <div className="col-md-4">
@@ -386,7 +386,7 @@ const Home = () => {
                       />
                     </div>
                   </div>
-                  
+
                   <div className="col-md-3">
                     <div className="form-group">
                       <label className="form-label">Job Type</label>
@@ -407,7 +407,7 @@ const Home = () => {
                       </select>
                     </div>
                   </div>
-                  
+
                   <div className="col-md-3">
                     <div className="form-group">
                       <label className="form-label">Location</label>
@@ -423,16 +423,16 @@ const Home = () => {
                       />
                     </div>
                   </div>
-                  
+
                   <div className="col-md-2 d-flex align-items-end">
                     <div className="d-flex gap-2 w-100">
-                      <button 
+                      <button
                         type="submit"
                         className="btn btn-primary flex-grow-1"
                       >
                         Search Jobs
                       </button>
-                      <button 
+                      <button
                         type="button"
                         className="btn btn-outline-secondary"
                         onClick={handleResetFilters}
@@ -443,7 +443,7 @@ const Home = () => {
                   </div>
                 </div>
               </form>
-              
+
               <div className="mt-4">
                 <h5>
                   {filteredJobs.length} Job{filteredJobs.length !== 1 ? 's' : ''} Found
@@ -492,7 +492,7 @@ const Home = () => {
                           <strong>{job.salaryRange || "Salary negotiable"}</strong>
                         </p>
                         <p className="text-muted small">
-                          <i className="bi bi-eye me-1"></i> {job.views || 0} views • 
+                          <i className="bi bi-eye me-1"></i> {job.views || 0} views •
                           <i className="bi bi-people ms-2 me-1"></i> {job.applications || 0} applications
                         </p>
                         <a href={`/jobs/${job._id}`} className="btn btn-primary w-100">
@@ -511,7 +511,7 @@ const Home = () => {
           <div className="d-flex justify-content-between align-items-center mb-4">
             <h3>📋 Latest Job Opportunities</h3>
             <div className="filter-buttons">
-              <button 
+              <button
                 className={`btn btn-sm ${filterType === '' ? 'btn-primary' : 'btn-outline-primary'}`}
                 onClick={() => setFilterType('')}
               >
@@ -552,7 +552,7 @@ const Home = () => {
                         &laquo; Previous
                       </button>
                     </li>
-                    
+
                     {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                       const pageNumber = i + 1;
                       return (
@@ -569,13 +569,13 @@ const Home = () => {
                         </li>
                       );
                     })}
-                    
+
                     {totalPages > 5 && (
                       <li className="page-item disabled">
                         <span className="page-link">...</span>
                       </li>
                     )}
-                    
+
                     <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
                       <button
                         className="page-link"
@@ -596,12 +596,12 @@ const Home = () => {
                   <div className="empty-state-icon mb-3">🔍</div>
                   <h4 className="mb-3">No jobs available</h4>
                   <p className="text-muted mb-4">
-                    {searchTerm || locationFilter || filterType 
-                      ? "No jobs match your search criteria. Try different filters." 
+                    {searchTerm || locationFilter || filterType
+                      ? "No jobs match your search criteria. Try different filters."
                       : "Currently no jobs are available. Check back soon or post a job!"}
                   </p>
                   <div className="d-flex justify-content-center gap-3">
-                    <button 
+                    <button
                       className="btn btn-primary"
                       onClick={handleResetFilters}
                     >
