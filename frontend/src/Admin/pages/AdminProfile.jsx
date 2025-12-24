@@ -4,7 +4,7 @@ import { useAdmin } from "../../context/AdminContext";
 import axios from "axios";
 import "./AdminProfile.css";
 
-const API_URL = "http://localhost:5000/api";
+const API_URL = "https://project-job-i2vd.vercel.app/api";
 
 const AdminProfile = () => {
   const { admin, logout } = useAdmin();
