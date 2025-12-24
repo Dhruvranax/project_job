@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Analytics } from '@vercel/analytics/react';
 import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { AuthProvider } from "./User/context/AuthContext";
 import { AdminProvider } from "./context/AdminContext";
@@ -63,6 +64,7 @@ const App = () => {
   return (
     <AuthProvider>
       <AdminProvider>
+        <Analytics />
         <div className={isDarkMode ? "dark-theme" : "light-theme"}>
           {!isAdminRoute && (
             <Header 
