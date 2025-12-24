@@ -216,7 +216,7 @@ const AdminRegister = () => {
 
     try {
       // Send registration data to backend
-      const response = await fetch("http://localhost:5000/api/admin/register", {
+      const response = await fetch("https://project-job-i2vd.vercel.app/api/admin/registe", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
