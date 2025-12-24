@@ -24,7 +24,7 @@ const CandidateManagement = () => {
     try {
       setLoading(true);
       
-      const response = await fetch(`http://localhost:5000/api/admin/candidates/admin/${adminId}`);
+      const response = await fetch(`https://project-job-i2vd.vercel.app/api/admin/candidates/admin/${adminId}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
@@ -51,7 +51,8 @@ const CandidateManagement = () => {
   // Status update
   const updateStatus = async (id, newStatus) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/admin/candidates/${id}`, {
+      const response = await fetch(`https://project-job-i2vd.vercel.app/api/admin/candidates/${id}`, {
+
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -74,7 +75,7 @@ const CandidateManagement = () => {
     if (!window.confirm('Delete this candidate?')) return;
     
     try {
-      const response = await fetch(`http://localhost:5000/api/admin/candidates/${id}`, {
+      const response = await fetch(`https://project-job-i2vd.vercel.app/api/admin/candidates/${id}`, {
         method: 'DELETE'
       });
       
