@@ -5,8 +5,28 @@ require('dotenv').config();
 
 const app = express();
 
+
+const allowedOrigins = [
+  'https://project-job-ashy.vercel.app', // Your live site
+  'http://localhost:3000' // For local development
+];
+
 // Basic middleware
-app.use(cors());
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  // credentials: true // If you are using cookies or authorization headers
+}));
+
+
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/api/admin/candidates', require('./routes/candidateRoutes'));
