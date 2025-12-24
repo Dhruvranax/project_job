@@ -1,3 +1,4 @@
+// JobCard.jsx - Full Code with Production API URL
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -62,7 +63,7 @@ const JobCard = ({ job, onApplySuccess }) => {
     app => app.userId && app.userId.toString() === user._id.toString()
   );
 
-  // Handle apply button click - COMPLETELY FIXED
+  // Handle apply button click - COMPLETELY FIXED with Production URL
   const handleApply = async () => {
     console.log("Apply button clicked for job:", job._id);
     console.log("User:", user);
@@ -97,8 +98,9 @@ const JobCard = ({ job, onApplySuccess }) => {
       console.log('Sending application data:', applicationData);
       console.log('Job ID:', job._id);
 
+      // ✅ PRODUCTION API URL - FIXED FOR MOBILE
       const response = await axios.post(
-        `http://localhost:5000/api/jobs/${job._id}/apply`,
+        `https://project-job-i2vd.vercel.app/api/jobs/${job._id}/apply`,
         applicationData,
         {
           headers: {
