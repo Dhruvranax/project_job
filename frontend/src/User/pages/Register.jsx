@@ -48,10 +48,10 @@ const Register = () => {
       // Prepare data for API (remove confirmPassword)
       const { confirmPassword, ...registerData } = formData;
       
-      const response = await axios.post(
-        'http://localhost:5000/api/users/register', 
-        registerData
-      );
+    const response = await axios.post(
+  'https://project-job-i2vd.vercel.app/api/users/register',
+  registerData
+);
       
       if (response.data.success) {
         setSuccess('Registration successful!');
