@@ -58,7 +58,7 @@ const JobManagement = () => {
       console.log("🔍 Testing API endpoints...");
       
       // Try the main endpoint
-      const url = `http://localhost:5000/api/jobs/admin/${adminIdStr}`;
+      const url = `https://project-job-i2vd.vercel.app/api/jobs/admin/${adminIdStr}`;
       console.log("🌐 Calling URL:", url);
       
       const response = await fetch(url);
@@ -70,7 +70,7 @@ const JobManagement = () => {
           console.log("⚠️ Endpoint not found, trying alternatives...");
           
           // Try getAdminJobs endpoint
-          const altUrl = `http://localhost:5000/api/jobs/${adminIdStr}`;
+          const altUrl = `https://project-job-i2vd.vercel.app/api/jobs/${adminIdStr}`;
           console.log("🌐 Trying alternative URL:", altUrl);
           
           const altResponse = await fetch(altUrl);
@@ -82,7 +82,7 @@ const JobManagement = () => {
           } else {
             // Try simple getAllJobs as fallback
             console.log("🌐 Trying getAllJobs as fallback...");
-            const allJobsResponse = await fetch('http://localhost:5000/api/jobs');
+            const allJobsResponse = await fetch('https://project-job-i2vd.vercel.app/api/jobs');
             
             if (allJobsResponse.ok) {
               const data = await allJobsResponse.json();
@@ -164,7 +164,7 @@ const JobManagement = () => {
     if (!window.confirm('Are you sure you want to delete this job? This action cannot be undone.')) return;
     
     try {
-      const response = await fetch(`http://localhost:5000/api/jobs/${id}`, {
+      const response = await fetch(`https://project-job-i2vd.vercel.app/api/jobs/${id}`, {
         method: 'DELETE'
       });
       
