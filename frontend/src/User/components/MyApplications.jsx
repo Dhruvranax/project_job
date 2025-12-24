@@ -15,7 +15,7 @@ const MyApplications = () => {
   
   const fetchApplications = async () => {
     try {
-      const response = await axios.get(`http://localhost:5000/api/jobs/user/applications/${user._id}`);
+      const response = await axios.get(`https://project-job-i2vd.vercel.app/api/jobs/user/applications/${user._id}`);
       if (response.data.success) {
         setApplications(response.data.applications);
       }
