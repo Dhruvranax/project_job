@@ -1,4 +1,4 @@
-// components/CandidateManagement.jsx (fully updated)
+// components/CandidateManagement.jsx (નવું ડિઝાઇન)
 import React, { useState, useEffect } from 'react';
 import './CandidateManagement.css';
 
@@ -6,200 +6,265 @@ const CandidateManagement = () => {
   const [candidates, setCandidates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [adminId, setAdminId] = useState('');
-  const [adminInfo, setAdminInfo] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
 
-  // Login કરતી વખતે admin ID localStorage માં save કરો
+  // ✅ API URL
+  const API_URL = 'http://localhost:5000';
+
   useEffect(() => {
-    const savedAdmin = localStorage.getItem('admin');
-    if (savedAdmin) {
-      const adminData = JSON.parse(savedAdmin);
+    const adminData = JSON.parse(localStorage.getItem('admin') || '{}');
+    
+    if (adminData._id) {
       setAdminId(adminData._id);
-      setAdminInfo(adminData);
       fetchCandidates(adminData._id);
+    } else {
+      setLoading(false);
     }
   }, []);
 
-  // Admin ID based API call
   const fetchCandidates = async (adminId) => {
     try {
       setLoading(true);
       
-      const response = await fetch(`https://project-job-i2vd.vercel.app/api/admin/candidates/admin/${adminId}`);
+      const response = await fetch(`${API_URL}/api/admin/candidates/admin/${adminId}`);
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        setCandidates(data.candidates);
-        if (data.admin) {
-          setAdminInfo(data.admin);
+      if (response.ok) {
+        const result = await response.json();
+        
+        if (result.success) {
+          setCandidates(result.candidates || []);
         }
-      } else {
-        throw new Error(data.message);
       }
-    } catch (err) {
-      console.error('Error:', err);
-      alert(err.message);
+    } catch (error) {
+      console.error('Error:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Status update
-  const updateStatus = async (id, newStatus) => {
+  const updateStatus = async (candidateId, newStatus) => {
     try {
-      const response = await fetch(`https://project-job-i2vd.vercel.app/api/admin/candidates/${id}`, {
-
+      const response = await fetch(`${API_URL}/api/admin/candidates/${candidateId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })
       });
-      
+
       if (response.ok) {
-        alert('Status updated!');
         fetchCandidates(adminId);
       }
-    } catch (err) {
-      console.error('Error:', err);
-      alert('Error updating status');
+    } catch (error) {
+      console.error('Error:', error);
     }
   };
 
-  // Delete candidate
-  const deleteCandidate = async (id) => {
-    if (!window.confirm('Delete this candidate?')) return;
-    
+  const deleteCandidate = async (candidateId) => {
+    if (!window.confirm('Are you sure?')) return;
+
     try {
-      const response = await fetch(`https://project-job-i2vd.vercel.app/api/admin/candidates/${id}`, {
+      const response = await fetch(`${API_URL}/api/admin/candidates/${candidateId}`, {
         method: 'DELETE'
       });
-      
+
       if (response.ok) {
-        alert('Deleted!');
         fetchCandidates(adminId);
       }
-    } catch (err) {
-      console.error('Error:', err);
-      alert('Error deleting');
+    } catch (error) {
+      console.error('Error:', error);
     }
+  };
+
+  // ✅ ફિલ્ટર્ડ candidates
+  const filteredCandidates = candidates.filter(candidate => {
+    const matchesSearch = 
+      candidate.userName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      candidate.userEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      candidate.jobTitle?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = 
+      statusFilter === 'All' || candidate.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  // ✅ Status counts
+  const statusCounts = {
+    All: candidates.length,
+    Pending: candidates.filter(c => c.status === 'Pending').length,
+    Reviewed: candidates.filter(c => c.status === 'Reviewed').length,
+    Shortlisted: candidates.filter(c => c.status === 'Shortlisted').length,
+    Rejected: candidates.filter(c => c.status === 'Rejected').length,
+    Accepted: candidates.filter(c => c.status === 'Accepted').length
   };
 
   if (loading) {
     return (
       <div className="loading-container">
-        <div className="loading-spinner"></div>
-        <p className="loading-text">Loading candidates...</p>
+        <div className="spinner"></div>
+        <p>Loading candidates...</p>
       </div>
     );
   }
 
   if (!adminId) {
     return (
-      <div className="p-8">
-        <div className="alert-warning">
-          Please login as admin to view candidates.
+      <div className="login-prompt">
+        <div className="login-card">
+          <h3>🔒 Admin Login Required</h3>
+          <p>Please login as admin to view candidate dashboard</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="candidate-management-container">
-      {/* Admin Info */}
-      {adminInfo && (
-        <div className="admin-info-panel">
-          <h2 className="admin-info-title">
-            {adminInfo.companyName} - Candidate Management
-          </h2>
-          <p className="admin-info-details">
-            Email: {adminInfo.email} | Jobs: {adminInfo.totalJobs || 0} | 
-            Candidates: {candidates.length}
+    <div className="candidate-dashboard">
+      {/* Dashboard Header */}
+      <div className="dashboard-header">
+        <div className="header-left">
+          <h1 className="dashboard-title">Candidate Dashboard</h1>
+          <p className="dashboard-subtitle">
+            Manage your job applicants efficiently
           </p>
         </div>
-      )}
-      
-      <h1 className="page-title">My Job Candidates ({candidates.length})</h1>
-      
-      {candidates.length === 0 ? (
-        <div className="empty-state">
-          <p className="empty-state-text">No candidates applied to your jobs yet.</p>
+        <div className="header-right">
+          <div className="total-candidates-card">
+            <span className="total-count">{candidates.length}</span>
+            <span className="total-label">Total Candidates</span>
+          </div>
         </div>
-      ) : (
-        <div className="table-container">
-          <table className="candidates-table">
+      </div>
+
+      {/* Stats Cards */}
+      <div className="stats-container">
+        {Object.entries(statusCounts).map(([status, count]) => (
+          <div 
+            key={status} 
+            className={`stat-card ${status === statusFilter ? 'active' : ''}`}
+            onClick={() => setStatusFilter(status)}
+          >
+            <div className="stat-count">{count}</div>
+            <div className="stat-label">{status}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Search and Filters */}
+      <div className="filters-container">
+        <div className="search-box">
+          <input
+            type="text"
+            placeholder="Search by name, email, or job..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="search-input"
+          />
+          <button className="search-btn">
+            🔍
+          </button>
+        </div>
+        
+        <div className="status-filter">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="filter-select"
+          >
+            <option value="All">All Status</option>
+            <option value="Pending">Pending</option>
+            <option value="Reviewed">Reviewed</option>
+            <option value="Shortlisted">Shortlisted</option>
+            <option value="Rejected">Rejected</option>
+            <option value="Accepted">Accepted</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Candidates Table */}
+      <div className="table-wrapper">
+        {filteredCandidates.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-icon">📋</div>
+            <h3>No candidates found</h3>
+            <p>Try changing your search or filters</p>
+          </div>
+        ) : (
+          <table className="candidate-table">
             <thead>
               <tr>
                 <th>Candidate</th>
+                <th>Contact</th>
                 <th>Job Applied</th>
-                <th>Resume</th>
+                <th>Applied Date</th>
                 <th>Status</th>
-                <th>Date</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {candidates.map((candidate) => (
+              {filteredCandidates.map((candidate) => (
                 <tr key={candidate._id}>
-                  <td className="candidate-info">
-                    <div>
-                      <strong className="candidate-name">{candidate.userName}</strong>
-                      <div className="candidate-contact">{candidate.userEmail}</div>
-                      <div className="candidate-contact">{candidate.userPhone}</div>
-                    </div>
-                  </td>
-                  <td className="job-info">
-                    <div>
-                      <strong className="job-title">{candidate.jobTitle}</strong>
-                      <div className="company-name">{candidate.companyName}</div>
+                  <td>
+                    <div className="candidate-profile">
+                      <div className="avatar">
+                        {candidate.userName?.charAt(0) || 'C'}
+                      </div>
+                      <div className="candidate-details">
+                        <strong className="candidate-name">
+                          {candidate.userName || 'N/A'}
+                        </strong>
+                        <small className="candidate-id">
+                          ID: {candidate._id?.substring(0, 8)}
+                        </small>
+                      </div>
                     </div>
                   </td>
                   <td>
-                    <button
-                      onClick={() => window.open(candidate.resume, '_blank')}
-                      className="resume-button"
-                    >
-                      📄 View Resume
-                    </button>
+                    <div className="contact-info">
+                      <div className="email">{candidate.userEmail || 'N/A'}</div>
+                      <div className="phone">{candidate.userPhone || 'N/A'}</div>
+                    </div>
                   </td>
                   <td>
-                    <div className="status-container">
-                      <span className={`status-badge ${
-                        candidate.status === 'Pending' ? 'status-pending' :
-                        candidate.status === 'Reviewed' ? 'status-reviewed' :
-                        candidate.status === 'Shortlisted' ? 'status-shortlisted' :
-                        candidate.status === 'Rejected' ? 'status-rejected' :
-                        candidate.status === 'Accepted' ? 'status-accepted' : 'status-default'
-                      }`}>
-                        {candidate.status}
-                      </span>
+                    <div className="job-info">
+                      <strong>{candidate.jobTitle || 'N/A'}</strong>
+                      <div className="company">{candidate.companyName}</div>
+                    </div>
+                  </td>
+                  <td>
+                    {candidate.appliedAt ? 
+                      new Date(candidate.appliedAt).toLocaleDateString('en-IN') : 
+                      'N/A'}
+                  </td>
+                  <td>
+                    <div className="status-wrapper">
                       <select
-                        value={candidate.status}
+                        value={candidate.status || 'Pending'}
                         onChange={(e) => updateStatus(candidate._id, e.target.value)}
-                        className="status-dropdown"
+                        className={`status-select status-${candidate.status?.toLowerCase()}`}
                       >
-                        <option value="Pending">Pending</option>
-                        <option value="Reviewed">Reviewed</option>
-                        <option value="Shortlisted">Shortlisted</option>
-                        <option value="Rejected">Rejected</option>
-                        <option value="Accepted">Accepted</option>
+                        <option value="Pending">⏳ Pending</option>
+                        <option value="Reviewed">👁️ Reviewed</option>
+                        <option value="Shortlisted">⭐ Shortlisted</option>
+                        <option value="Rejected">❌ Rejected</option>
+                        <option value="Accepted">✅ Accepted</option>
                       </select>
                     </div>
                   </td>
-                  <td className="date-cell">
-                    {new Date(candidate.appliedAt).toLocaleDateString()}
-                  </td>
-                  <td className="actions-cell">
-                    <div className="actions-container">
-                      <button
-                        onClick={() => deleteCandidate(candidate._id)}
-                        className="delete-button"
+                  <td>
+                    <div className="action-buttons">
+                      <button 
+                        className="btn-view"
+                        onClick={() => window.open(candidate.resume, '_blank')}
+                        disabled={!candidate.resume}
                       >
-                        Delete
+                        📄 Resume
+                      </button>
+                      <button 
+                        className="btn-delete"
+                        onClick={() => deleteCandidate(candidate._id)}
+                      >
+                        🗑️ Delete
                       </button>
                     </div>
                   </td>
@@ -207,8 +272,24 @@ const CandidateManagement = () => {
               ))}
             </tbody>
           </table>
+        )}
+      </div>
+
+      {/* Summary Footer */}
+      <div className="summary-footer">
+        <div className="summary-item">
+          <span className="summary-label">Showing:</span>
+          <span className="summary-value">
+            {filteredCandidates.length} of {candidates.length} candidates
+          </span>
         </div>
-      )}
+        <div className="summary-item">
+          <span className="summary-label">Last Updated:</span>
+          <span className="summary-value">
+            {new Date().toLocaleTimeString()}
+          </span>
+        </div>
+      </div>
     </div>
   );
 };
