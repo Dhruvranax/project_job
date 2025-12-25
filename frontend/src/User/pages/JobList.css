@@ -197,3 +197,69 @@
 .job-list-page .user-avatar-small {
   width: 40px;
 }
+.job-list-page {
+  min-height: 80vh;
+}
+
+.user-avatar-small {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.filter-buttons .btn {
+  min-width: 80px;
+}
+
+.empty-state-icon {
+  font-size: 4rem;
+  opacity: 0.5;
+}
+
+.card {
+  transition: transform 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+}
+
+.page-item.active .page-link {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+}
+
+.badge.bg-primary {
+  background-color: #0d6efd !important;
+}
+
+.alert-info {
+  background-color: #e7f1ff;
+  border-color: #b3d4fc;
+}
+
+.spinner-border {
+  display: inline-block;
+}
+
+@media (max-width: 768px) {
+  .job-list-page .container {
+    padding-left: 15px;
+    padding-right: 15px;
+  }
+  
+  .filter-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  
+  .filter-buttons .btn {
+    flex: 1;
+    min-width: auto;
+  }
+}
