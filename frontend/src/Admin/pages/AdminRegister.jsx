@@ -1,10 +1,10 @@
 // src/Admin/pages/AdminRegister.jsx
-import React, { useState } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAdmin } from "../../context/AdminContext";
 
 const AdminRegister = () => {
-  const [formData, setFormData] = useState({
+  const initialFormData = {
     // Personal Information
     fullName: "",
     email: "",
@@ -35,11 +35,13 @@ const AdminRegister = () => {
     // Terms
     agreeToTerms: false,
     receiveUpdates: true
-  });
+  };
 
+  const [formData, setFormData] = useState(initialFormData);
   const [errors, setErrors] = useState({});
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const { login } = useAdmin();
 
@@ -115,20 +117,20 @@ const AdminRegister = () => {
     "Other"
   ];
 
-  const handleChange = (e) => {
+  const handleChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
     
-    // Clear error for this field
+    // Clear error for this field when user starts typing
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: "" }));
     }
-  };
+  }, [errors]);
 
-  const validateStep = (step) => {
+  const validateStep = useCallback((step) => {
     const newErrors = {};
 
     if (step === 1) {
@@ -138,8 +140,8 @@ const AdminRegister = () => {
         newErrors.email = "Invalid email format";
       }
       if (!formData.phone.trim()) newErrors.phone = "Phone number is required";
-      else if (!/^[0-9]{10}$/.test(formData.phone)) {
-        newErrors.phone = "Enter valid 10-digit phone number";
+      else if (!/^[6-9][0-9]{9}$/.test(formData.phone)) {
+        newErrors.phone = "Enter valid 10-digit Indian mobile number";
       }
       if (!formData.password) newErrors.password = "Password is required";
       else if (formData.password.length < 8) {
@@ -174,7 +176,18 @@ const AdminRegister = () => {
     }
 
     return newErrors;
-  };
+  }, [formData]);
+
+  useEffect(() => {
+    // Auto-focus on first error field
+    const firstError = Object.keys(errors)[0];
+    if (firstError) {
+      const errorElement = document.getElementById(firstError);
+      if (errorElement) {
+        errorElement.focus();
+      }
+    }
+  }, [errors]);
 
   const handleNextStep = () => {
     const stepErrors = validateStep(currentStep);
@@ -185,16 +198,18 @@ const AdminRegister = () => {
     }
     
     setCurrentStep(prev => prev + 1);
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handlePrevStep = () => {
     setCurrentStep(prev => prev - 1);
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (isSubmitting) return;
     
     const allErrors = validateStep(1);
     Object.assign(allErrors, validateStep(2));
@@ -208,15 +223,16 @@ const AdminRegister = () => {
     }
 
     if (!formData.agreeToTerms) {
-      alert("You must agree to terms and conditions");
+      setErrors(prev => ({ ...prev, agreeToTerms: "You must agree to terms and conditions" }));
       return;
     }
 
     setLoading(true);
+    setIsSubmitting(true);
 
     try {
-      // Send registration data to backend
-      const response = await fetch("https://project-job-i2vd.vercel.app/api/admin/registe", {
+      // Fixed API endpoint URL: "register" instead of "registe"
+      const response = await fetch("https://project-job-i2vd.vercel.app/api/admin/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -224,40 +240,36 @@ const AdminRegister = () => {
         body: JSON.stringify(formData),
       });
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
       
       console.log("Backend Registration Response:", data);
 
-      if (response.ok) {
+      if (data.success || response.ok) {
         // Success message
         alert(data.message || "Admin registration successful!");
         
+        // Reset form
+        setFormData(initialFormData);
+        setCurrentStep(1);
+        setErrors({});
+        
         // Check if admin data exists in response
+        let adminData = null;
+        
         if (data.admin) {
           console.log("Admin data from backend:", data.admin);
-          
-          // Add timestamp and ensure all required fields
-          const adminDataWithTimestamp = {
-            ...data.admin,
-            loginTime: new Date().toISOString(),
-            // Ensure we have at least these fields
-            fullName: data.admin.fullName || formData.fullName,
-            email: data.admin.email || formData.email,
-            companyName: data.admin.companyName || formData.companyName
-          };
-          
-          // Save to context
-          console.log("Saving admin to context:", adminDataWithTimestamp);
-          login(adminDataWithTimestamp);
-          
-          // Force save to localStorage as backup
-          localStorage.setItem('admin', JSON.stringify(adminDataWithTimestamp));
-          console.log("Saved admin to localStorage");
-          
+          adminData = data.admin;
+        } else if (data.data) {
+          console.log("Admin data from backend (data field):", data.data);
+          adminData = data.data;
         } else {
           console.warn("No admin data in response, creating from form data");
           // Create admin object from form data as fallback
-          const adminFromForm = {
+          adminData = {
             _id: `temp_${Date.now()}`,
             fullName: formData.fullName,
             email: formData.email,
@@ -275,25 +287,57 @@ const AdminRegister = () => {
             isVerified: true,
             loginTime: new Date().toISOString()
           };
-          
-          login(adminFromForm);
-          localStorage.setItem('admin', JSON.stringify(adminFromForm));
         }
         
-        // Navigate to admin page with a slight delay to ensure state updates
-        setTimeout(() => {
-          console.log("Navigating to /admin");
-          navigate("/admin");
-        }, 300);
+        // Add timestamp and ensure all required fields
+        const adminDataWithTimestamp = {
+          ...adminData,
+          loginTime: new Date().toISOString(),
+          fullName: adminData.fullName || formData.fullName,
+          email: adminData.email || formData.email,
+          companyName: adminData.companyName || formData.companyName
+        };
+        
+        // Save to context
+        console.log("Saving admin to context:", adminDataWithTimestamp);
+        login(adminDataWithTimestamp);
+        
+        // Save to localStorage as backup with error handling
+        try {
+          localStorage.setItem('admin', JSON.stringify(adminDataWithTimestamp));
+          console.log("Saved admin to localStorage");
+        } catch (storageError) {
+          console.error("LocalStorage error:", storageError);
+          // Continue even if localStorage fails
+        }
+        
+        // Navigate to admin page
+        navigate("/admin", { 
+          state: { 
+            fromRegistration: true,
+            adminData: adminDataWithTimestamp 
+          } 
+        });
         
       } else {
-        alert(data.message || "Registration failed. Please try again.");
+        // Show backend validation errors if available
+        if (data.errors) {
+          setErrors(data.errors);
+          alert("Please fix the highlighted errors");
+        } else {
+          alert(data.message || "Registration failed. Please try again.");
+        }
       }
     } catch (error) {
       console.error("Registration error:", error);
-      alert("Network error. Please check your connection and try again.");
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        alert("Network error. Please check your internet connection and try again.");
+      } else {
+        alert(`Error: ${error.message}. Please try again.`);
+      }
     } finally {
       setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -313,13 +357,19 @@ const AdminRegister = () => {
                 </label>
                 <input
                   type="text"
+                  id="fullName"
                   name="fullName"
                   className={`form-control ${errors.fullName ? 'is-invalid' : ''}`}
                   placeholder="Enter your full name"
                   value={formData.fullName}
                   onChange={handleChange}
+                  aria-label="Full Name"
+                  aria-invalid={!!errors.fullName}
+                  aria-describedby={errors.fullName ? "fullNameError" : undefined}
                 />
-                {errors.fullName && <div className="invalid-feedback">{errors.fullName}</div>}
+                {errors.fullName && (
+                  <div id="fullNameError" className="invalid-feedback">{errors.fullName}</div>
+                )}
               </div>
               
               <div className="col-md-6">
@@ -328,11 +378,14 @@ const AdminRegister = () => {
                 </label>
                 <input
                   type="email"
+                  id="email"
                   name="email"
                   className={`form-control ${errors.email ? 'is-invalid' : ''}`}
                   placeholder="Enter your official email"
                   value={formData.email}
                   onChange={handleChange}
+                  aria-label="Email Address"
+                  aria-invalid={!!errors.email}
                 />
                 {errors.email && <div className="invalid-feedback">{errors.email}</div>}
                 <small className="text-muted">Use company email for verification</small>
@@ -344,11 +397,14 @@ const AdminRegister = () => {
                 </label>
                 <input
                   type="tel"
+                  id="phone"
                   name="phone"
                   className={`form-control ${errors.phone ? 'is-invalid' : ''}`}
                   placeholder="Enter 10-digit mobile number"
                   value={formData.phone}
                   onChange={handleChange}
+                  maxLength="10"
+                  aria-label="Phone Number"
                 />
                 {errors.phone && <div className="invalid-feedback">{errors.phone}</div>}
               </div>
@@ -359,11 +415,13 @@ const AdminRegister = () => {
                 </label>
                 <input
                   type="password"
+                  id="password"
                   name="password"
                   className={`form-control ${errors.password ? 'is-invalid' : ''}`}
                   placeholder="Create password (min. 8 characters)"
                   value={formData.password}
                   onChange={handleChange}
+                  aria-label="Password"
                 />
                 {errors.password && <div className="invalid-feedback">{errors.password}</div>}
               </div>
@@ -374,11 +432,13 @@ const AdminRegister = () => {
                 </label>
                 <input
                   type="password"
+                  id="confirmPassword"
                   name="confirmPassword"
                   className={`form-control ${errors.confirmPassword ? 'is-invalid' : ''}`}
                   placeholder="Confirm your password"
                   value={formData.confirmPassword}
                   onChange={handleChange}
+                  aria-label="Confirm Password"
                 />
                 {errors.confirmPassword && <div className="invalid-feedback">{errors.confirmPassword}</div>}
               </div>
@@ -400,11 +460,13 @@ const AdminRegister = () => {
                 </label>
                 <input
                   type="text"
+                  id="companyName"
                   name="companyName"
                   className={`form-control ${errors.companyName ? 'is-invalid' : ''}`}
                   placeholder="Enter official company name"
                   value={formData.companyName}
                   onChange={handleChange}
+                  aria-label="Company Name"
                 />
                 {errors.companyName && <div className="invalid-feedback">{errors.companyName}</div>}
               </div>
@@ -414,10 +476,12 @@ const AdminRegister = () => {
                   Company Type <span className="text-danger">*</span>
                 </label>
                 <select
+                  id="companyType"
                   name="companyType"
                   className={`form-select ${errors.companyType ? 'is-invalid' : ''}`}
                   value={formData.companyType}
                   onChange={handleChange}
+                  aria-label="Company Type"
                 >
                   <option value="">Select Company Type</option>
                   {companyTypes.map(type => (
@@ -431,11 +495,13 @@ const AdminRegister = () => {
                 <label className="form-label">Company Website (Optional)</label>
                 <input
                   type="url"
+                  id="companyWebsite"
                   name="companyWebsite"
                   className="form-control"
                   placeholder="https://www.example.com"
                   value={formData.companyWebsite}
                   onChange={handleChange}
+                  aria-label="Company Website"
                 />
               </div>
               
@@ -444,10 +510,12 @@ const AdminRegister = () => {
                   Company Size <span className="text-danger">*</span>
                 </label>
                 <select
+                  id="companySize"
                   name="companySize"
                   className={`form-select ${errors.companySize ? 'is-invalid' : ''}`}
                   value={formData.companySize}
                   onChange={handleChange}
+                  aria-label="Company Size"
                 >
                   <option value="">Select Company Size</option>
                   {companySizes.map(size => (
@@ -462,10 +530,12 @@ const AdminRegister = () => {
                   Industry <span className="text-danger">*</span>
                 </label>
                 <select
+                  id="industry"
                   name="industry"
                   className={`form-select ${errors.industry ? 'is-invalid' : ''}`}
                   value={formData.industry}
                   onChange={handleChange}
+                  aria-label="Industry"
                 >
                   <option value="">Select Industry</option>
                   {industries.map(ind => (
@@ -490,11 +560,13 @@ const AdminRegister = () => {
                 <label className="form-label">Company PAN Number (Optional)</label>
                 <input
                   type="text"
+                  id="companyPan"
                   name="companyPan"
                   className="form-control"
                   placeholder="ABCDE1234F"
                   value={formData.companyPan}
                   onChange={handleChange}
+                  aria-label="Company PAN Number"
                 />
                 <small className="text-muted">Required for payment processing</small>
               </div>
@@ -503,11 +575,13 @@ const AdminRegister = () => {
                 <label className="form-label">GST Number (Optional)</label>
                 <input
                   type="text"
+                  id="gstNumber"
                   name="gstNumber"
                   className="form-control"
                   placeholder="22AAAAA0000A1Z5"
                   value={formData.gstNumber}
                   onChange={handleChange}
+                  aria-label="GST Number"
                 />
               </div>
               
@@ -516,12 +590,14 @@ const AdminRegister = () => {
                   Company Address <span className="text-danger">*</span>
                 </label>
                 <textarea
+                  id="companyAddress"
                   name="companyAddress"
                   className={`form-control ${errors.companyAddress ? 'is-invalid' : ''}`}
                   placeholder="Enter complete company address"
                   rows="3"
                   value={formData.companyAddress}
                   onChange={handleChange}
+                  aria-label="Company Address"
                 ></textarea>
                 {errors.companyAddress && <div className="invalid-feedback">{errors.companyAddress}</div>}
               </div>
@@ -532,11 +608,13 @@ const AdminRegister = () => {
                 </label>
                 <input
                   type="text"
+                  id="city"
                   name="city"
                   className={`form-control ${errors.city ? 'is-invalid' : ''}`}
                   placeholder="Enter city"
                   value={formData.city}
                   onChange={handleChange}
+                  aria-label="City"
                 />
                 {errors.city && <div className="invalid-feedback">{errors.city}</div>}
               </div>
@@ -546,10 +624,12 @@ const AdminRegister = () => {
                   State <span className="text-danger">*</span>
                 </label>
                 <select
+                  id="state"
                   name="state"
                   className={`form-select ${errors.state ? 'is-invalid' : ''}`}
                   value={formData.state}
                   onChange={handleChange}
+                  aria-label="State"
                 >
                   <option value="">Select State</option>
                   {indianStates.map(state => (
@@ -565,11 +645,14 @@ const AdminRegister = () => {
                 </label>
                 <input
                   type="text"
+                  id="pincode"
                   name="pincode"
                   className={`form-control ${errors.pincode ? 'is-invalid' : ''}`}
                   placeholder="6-digit pincode"
                   value={formData.pincode}
                   onChange={handleChange}
+                  maxLength="6"
+                  aria-label="Pincode"
                 />
                 {errors.pincode && <div className="invalid-feedback">{errors.pincode}</div>}
               </div>
@@ -590,10 +673,12 @@ const AdminRegister = () => {
                   Hiring Frequency <span className="text-danger">*</span>
                 </label>
                 <select
+                  id="hiringFrequency"
                   name="hiringFrequency"
                   className={`form-select ${errors.hiringFrequency ? 'is-invalid' : ''}`}
                   value={formData.hiringFrequency}
                   onChange={handleChange}
+                  aria-label="Hiring Frequency"
                 >
                   <option value="">Select Hiring Frequency</option>
                   {hiringFrequencies.map(freq => (
@@ -607,11 +692,13 @@ const AdminRegister = () => {
                 <label className="form-label">Team Size You'll Manage</label>
                 <input
                   type="text"
+                  id="teamSize"
                   name="teamSize"
                   className="form-control"
                   placeholder="e.g., 5 members"
                   value={formData.teamSize}
                   onChange={handleChange}
+                  aria-label="Team Size"
                 />
               </div>
               
@@ -620,10 +707,12 @@ const AdminRegister = () => {
                   Monthly Hiring Budget <span className="text-danger">*</span>
                 </label>
                 <select
+                  id="monthlyHiringBudget"
                   name="monthlyHiringBudget"
                   className={`form-select ${errors.monthlyHiringBudget ? 'is-invalid' : ''}`}
                   value={formData.monthlyHiringBudget}
                   onChange={handleChange}
+                  aria-label="Monthly Hiring Budget"
                 >
                   <option value="">Select Monthly Budget</option>
                   {monthlyBudgets.map(budget => (
@@ -638,11 +727,13 @@ const AdminRegister = () => {
                 <div className="form-check mb-2">
                   <input
                     type="checkbox"
+                    id="agreeToTerms"
                     name="agreeToTerms"
                     className={`form-check-input ${errors.agreeToTerms ? 'is-invalid' : ''}`}
                     checked={formData.agreeToTerms}
                     onChange={handleChange}
-                    id="agreeToTerms"
+                    aria-label="Agree to Terms and Conditions"
+                    aria-invalid={!!errors.agreeToTerms}
                   />
                   <label className="form-check-label" htmlFor="agreeToTerms">
                     I agree to the <Link to="/terms">Terms of Service</Link> and <Link to="/privacy">Privacy Policy</Link> <span className="text-danger">*</span>
@@ -653,11 +744,12 @@ const AdminRegister = () => {
                 <div className="form-check">
                   <input
                     type="checkbox"
+                    id="receiveUpdates"
                     name="receiveUpdates"
                     className="form-check-input"
                     checked={formData.receiveUpdates}
                     onChange={handleChange}
-                    id="receiveUpdates"
+                    aria-label="Receive Updates"
                   />
                   <label className="form-check-label" htmlFor="receiveUpdates">
                     Receive updates about new features, job market insights, and promotions
@@ -707,23 +799,24 @@ const AdminRegister = () => {
                 aria-valuenow={progressPercentage}
                 aria-valuemin="0"
                 aria-valuemax="100"
+                aria-label="Registration progress"
               ></div>
             </div>
           </div>
 
           {/* Header */}
           <div className="text-center mb-4">
-            <h2 className="fw-bold text-primary">
+            <h1 className="fw-bold text-primary">
               <i className="fas fa-user-tie me-2"></i>
               Register as Admin/Recruiter
-            </h2>
+            </h1>
             <p className="text-muted">
               Create your admin account to start hiring talent
             </p>
           </div>
 
           {/* Form Steps */}
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} noValidate>
             {renderStep()}
 
             {/* Navigation Buttons */}
@@ -735,6 +828,7 @@ const AdminRegister = () => {
                     className="btn btn-outline-secondary"
                     onClick={handlePrevStep}
                     disabled={loading}
+                    aria-label="Previous step"
                   >
                     <i className="fas fa-arrow-left me-2"></i>
                     Previous
@@ -749,6 +843,7 @@ const AdminRegister = () => {
                     className="btn btn-primary px-4"
                     onClick={handleNextStep}
                     disabled={loading}
+                    aria-label={`Next step to step ${currentStep + 1}`}
                   >
                     Next Step
                     <i className="fas fa-arrow-right ms-2"></i>
@@ -757,16 +852,17 @@ const AdminRegister = () => {
                   <button
                     type="submit"
                     className="btn btn-success px-4"
-                    disabled={loading}
+                    disabled={loading || isSubmitting}
+                    aria-label="Complete registration"
                   >
                     {loading ? (
                       <>
-                        <span className="spinner-border spinner-border-sm me-2"></span>
-                        Creating Account...
+                        <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                        <span aria-live="polite">Creating Account...</span>
                       </>
                     ) : (
                       <>
-                        <i className="fas fa-check-circle me-2"></i>
+                        <i className="fas fa-check-circle me-2" aria-hidden="true"></i>
                         Complete Registration
                       </>
                     )}
@@ -817,8 +913,8 @@ const AdminRegister = () => {
         </div>
       </div>
 
-      {/* Add some custom CSS */}
-      <style jsx>{`
+      {/* CSS Styles */}
+      <style>{`
         .step-number {
           display: inline-flex;
           align-items: center;
@@ -841,6 +937,22 @@ const AdminRegister = () => {
         
         .progress-bar {
           transition: width 0.3s ease;
+        }
+        
+        .form-control:focus,
+        .form-select:focus {
+          border-color: #80bdff;
+          box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+        
+        .btn-primary {
+          background-color: #007bff;
+          border-color: #007bff;
+        }
+        
+        .btn-primary:hover {
+          background-color: #0056b3;
+          border-color: #0056b3;
         }
       `}</style>
     </div>
