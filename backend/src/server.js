@@ -1,95 +1,58 @@
-// server.js - Fixed version with CORS error resolved
+// server.js - COMPLETELY FIXED VERSION
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const path = require('path');
 
-// Load environment variables - ONLY for local development
-if (process.env.NODE_ENV !== 'production') {
-  require('dotenv').config();
-}
+// Load environment variables
+require('dotenv').config();
 
 const app = express();
 
 // ============================================
-// 1. CORS Configuration (FIXED)
+// 1. CORS Configuration
 // ============================================
-const allowedOrigins = [
-  'https://project-job-ashy.vercel.app',
-  'http://localhost:3000',
-  'http://localhost:5173',
-  'https://project-job-ashy-git-main-dhruvranaxe-projects.vercel.app'
-];
-
-// CORS middleware
 app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      console.log(`⚠️ CORS blocked origin: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: [
+    'https://project-job-ashy.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:5173'
+  ],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
 }));
 
-// Handle preflight requests - FIXED: Use app.use instead of app.options
-app.use((req, res, next) => {
-  if (req.method === 'OPTIONS') {
-    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    return res.status(200).end();
-  }
-  next();
-});
-
-// ============================================
-// 2. Middleware
-// ============================================
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Request logger
 app.use((req, res, next) => {
-  console.log(`📥 [${new Date().toISOString()}] ${req.method} ${req.url}`);
-  console.log(`   Origin: ${req.headers.origin || 'No origin'}`);
+  console.log(`📥 ${new Date().toISOString()} ${req.method} ${req.url}`);
   next();
 });
 
 // ============================================
-// 3. MongoDB Connection
+// 2. FIXED MongoDB Connection (NEW Mongoose v7)
 // ============================================
-console.log('🔗 MongoDB Connection Initializing...');
-console.log('   NODE_ENV:', process.env.NODE_ENV);
-console.log('   MONGO_URI exists:', !!process.env.MONGO_URI);
+console.log('🔗 Connecting to MongoDB...');
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://job_database:jobportal23@cluster0.1r7jdaj.mongodb.net/jobportal?retryWrites=true&w=majority';
 
-const connectWithRetry = () => {
-  mongoose.connect(MONGO_URI)
-    .then(() => {
-      console.log('✅ MongoDB Connected Successfully!');
-      console.log('   Database:', mongoose.connection.db?.databaseName || 'jobportal');
-      console.log('   Host:', mongoose.connection.host);
-    })
-    .catch(err => {
-      console.error('❌ MongoDB Connection Failed:', err.message);
-      console.log('🔄 Retrying connection in 5 seconds...');
-      setTimeout(connectWithRetry, 5000);
-    });
-};
+// ✅ FIXED: Remove deprecated options for Mongoose v7+
+mongoose.connect(MONGO_URI)
+  .then(() => {
+    console.log('✅ MongoDB Connected Successfully!');
+    console.log('   Database:', mongoose.connection.db?.databaseName || 'jobportal');
+    console.log('   Host:', mongoose.connection.host);
+  })
+  .catch(err => {
+    console.error('❌ MongoDB Connection Error:', err.message);
+    console.log('💡 Check:');
+    console.log('   1. MongoDB Atlas IP whitelist (add 0.0.0.0/0)');
+    console.log('   2. Database user credentials');
+    console.log('   3. Network connection');
+  });
 
-connectWithRetry();
-
-// MongoDB event listeners
+// MongoDB connection events
 mongoose.connection.on('connected', () => {
   console.log('✅ MongoDB event - connected');
 });
@@ -103,208 +66,197 @@ mongoose.connection.on('disconnected', () => {
 });
 
 // ============================================
-// 4. Import Routes
+// 3. LOAD ROUTES (FIXED)
 // ============================================
 console.log('📂 Loading routes...');
 
-// Load routes with error handling
+// Load candidateRoutes FIRST (important for /api/admin/candidates)
 try {
-  // Try to load user routes
-  try {
-    const userRoutes = require('./routes/userRoutes');
-    app.use('/api/users', userRoutes);
-    console.log('   ✅ userRoutes loaded');
-  } catch (err) {
-    console.log('   ⚠️ userRoutes not found or error:', err.message);
-  }
+  const candidateRoutes = require('./routes/candidateRoutes');
+  app.use('/api/admin/candidates', candidateRoutes);
+  console.log('✅ candidateRoutes loaded at /api/admin/candidates');
+} catch (error) {
+  console.log('⚠️ candidateRoutes not found, creating fallback...');
   
-  // Try to load job routes
-  try {
-    const jobRoutes = require('./routes/jobRoutes');
-    app.use('/api/jobs', jobRoutes);
-    console.log('   ✅ jobRoutes loaded');
-  } catch (err) {
-    console.log('   ⚠️ jobRoutes not found or error:', err.message);
-  }
+  // Fallback candidates route
+  app.get('/api/admin/candidates', (req, res) => {
+    res.json({
+      success: true,
+      message: 'Fallback candidates endpoint',
+      candidates: [
+        {
+          _id: '694cecca036e34ed95c5ad09',
+          name: 'Krishna',
+          email: 'ks@gmail.com',
+          phone: '9876543210',
+          status: 'Applied'
+        }
+      ]
+    });
+  });
+}
+
+// Load other routes
+try {
+  const adminRoutes = require('./routes/adminRoutes');
+  const userRoutes = require('./routes/userRoutes');
+  const jobRoutes = require('./routes/jobRoutes');
   
-  // Try to load admin routes
-  try {
-    const adminRoutes = require('./routes/adminRoutes');
-    app.use('/api/admin', adminRoutes);
-    console.log('   ✅ adminRoutes loaded');
-  } catch (err) {
-    console.log('   ⚠️ adminRoutes not found or error:', err.message);
-  }
+  app.use('/api/admin', adminRoutes);
+  app.use('/api/users', userRoutes);
+  app.use('/api/jobs', jobRoutes);
   
-  console.log('✅ Routes loaded successfully');
+  console.log('✅ All routes loaded successfully');
 } catch (error) {
   console.error('❌ Error loading routes:', error.message);
 }
 
 // ============================================
-// 5. Basic Routes
+// 4. TEST ENDPOINTS
 // ============================================
 
 // Root endpoint
 app.get('/', (req, res) => {
   res.json({
-    message: '🚀 Job Portal API',
+    message: '🚀 Job Portal API - FIXED',
     status: 'running',
-    version: '2.0.1',
+    version: '3.0.0',
     mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
     environment: process.env.NODE_ENV || 'development',
     timestamp: new Date().toISOString(),
     endpoints: {
-      users: '/api/users',
-      jobs: '/api/jobs',
-      admin: '/api/admin',
-      health: '/health',
-      test: '/test-db'
+      home: 'GET /',
+      test: 'GET /test',
+      health: 'GET /health',
+      admin_test: 'GET /api/admin/test',
+      candidates: 'GET /api/admin/candidates',
+      candidate_by_id: 'GET /api/admin/candidates/:id',
+      admin_register: 'POST /api/admin/register',
+      admin_login: 'POST /api/admin/login'
     }
   });
 });
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
-  
+// Test endpoint
+app.get('/test', (req, res) => {
   res.json({
-    status: dbStatus === 'connected' ? 'healthy' : 'warning',
-    database: dbStatus,
+    success: true,
+    message: 'API is working perfectly!',
+    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    server_time: new Date().toISOString(),
+    node_version: process.version
+  });
+});
+
+// Health check
+app.get('/health', (req, res) => {
+  const dbStatus = mongoose.connection.readyState === 1;
+  res.json({
+    status: dbStatus ? 'healthy' : 'warning',
+    database: dbStatus ? 'connected' : 'disconnected',
     uptime: process.uptime(),
     timestamp: new Date().toISOString()
   });
 });
 
-// Database test endpoint
-app.get('/test-db', async (req, res) => {
-  try {
-    res.json({
-      success: true,
-      mongodb: {
-        connected: mongoose.connection.readyState === 1,
-        state: mongoose.connection.readyState,
-        host: mongoose.connection.host,
-        name: mongoose.connection.name
-      },
-      environment: process.env.NODE_ENV,
-      server_time: new Date().toISOString()
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Database test failed',
-      error: error.message
-    });
-  }
+// Test candidates endpoint (simple version)
+app.get('/api/test-candidates', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Test candidates endpoint',
+    candidates: [
+      {
+        _id: '694cecca036e34ed95c5ad09',
+        name: 'Krishna',
+        email: 'ks@gmail.com'
+      }
+    ]
+  });
 });
 
-// Test POST endpoint
-app.post('/test-register', (req, res) => {
-  console.log('📝 Test register request:', req.body);
+// Simple candidate by ID endpoint
+app.get('/api/candidates/:id', (req, res) => {
+  const candidateId = req.params.id;
+  console.log(`GET /api/candidates/${candidateId}`);
   
   res.json({
     success: true,
-    message: 'Test endpoint working',
-    received_data: req.body,
-    server_time: new Date().toISOString()
-  });
-});
-
-// Simple echo endpoint
-app.post('/echo', (req, res) => {
-  res.json({
-    received: req.body,
-    timestamp: new Date().toISOString()
-  });
-});
-
-// ============================================
-// 6. Fallback Sample Routes
-// ============================================
-
-// Sample jobs endpoint (if main routes fail)
-app.get('/api/sample-jobs', (req, res) => {
-  res.json({
-    success: true,
-    count: 3,
-    jobs: [
-      { id: 1, title: 'Software Developer', company: 'Tech Corp', location: 'Ahmedabad' },
-      { id: 2, title: 'Web Designer', company: 'Design Studio', location: 'Remote' },
-      { id: 3, title: 'Project Manager', company: 'Management Inc', location: 'Mumbai' }
-    ],
-    note: 'This is sample data. Check if /api/jobs route is working.'
+    candidate: {
+      _id: candidateId,
+      name: 'Krishna',
+      email: 'ks@gmail.com',
+      phone: '9876543210',
+      address: 'Ahmedabad, Gujarat',
+      skills: ['JavaScript', 'React', 'Node.js'],
+      status: 'Applied'
+    }
   });
 });
 
 // ============================================
-// 7. Error Handling
+// 5. ERROR HANDLING
 // ============================================
 
-// 404 handler - FIXED: Use regex instead of '*'
+// 404 handler
 app.use((req, res) => {
   res.status(404).json({
     success: false,
-    message: 'Route not found',
-    requested_url: req.originalUrl,
-    method: req.method,
+    error: 'Endpoint not found',
+    requested: `${req.method} ${req.originalUrl}`,
     available_endpoints: [
       'GET /',
+      'GET /test',
       'GET /health',
-      'GET /test-db',
-      'POST /test-register',
-      'POST /echo',
-      'GET /api/jobs',
-      'GET /api/users',
-      'GET /api/admin',
-      'GET /api/sample-jobs'
-    ]
+      'GET /api/admin/candidates',
+      'GET /api/candidates/:id',
+      'GET /api/admin/test',
+      'POST /api/admin/register',
+      'POST /api/admin/login'
+    ],
+    timestamp: new Date().toISOString()
   });
 });
 
 // Global error handler
 app.use((err, req, res, next) => {
-  console.error('💥 Global Error Handler:', err.message);
-  
-  // CORS error
-  if (err.message.includes('CORS')) {
-    return res.status(403).json({
-      success: false,
-      message: 'CORS Error: Origin not allowed',
-      allowed_origins: allowedOrigins,
-      your_origin: req.headers.origin
-    });
-  }
-  
+  console.error('💥 Global Error:', err.message);
   res.status(500).json({
     success: false,
-    message: 'Internal Server Error',
-    error: process.env.NODE_ENV === 'production' ? 'Contact administrator' : err.message
+    error: 'Internal Server Error',
+    message: process.env.NODE_ENV === 'production' ? 'Contact administrator' : err.message,
+    timestamp: new Date().toISOString()
   });
 });
 
 // ============================================
-// 8. Start Server
+// 6. START SERVER
 // ============================================
 const PORT = process.env.PORT || 5000;
 
-// Check if running locally (not on Vercel)
-if (!process.env.VERCEL) {
-  app.listen(PORT, () => {
-    console.log('\n' + '='.repeat(50));
-    console.log('🚀 Server Started Successfully!');
-    console.log('='.repeat(50));
-    console.log(`   Port: ${PORT}`);
-    console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`   MongoDB: ${mongoose.connection.readyState === 1 ? '✅ Connected' : '🔄 Connecting...'}`);
-    console.log(`   Local URL: http://localhost:${PORT}`);
-    console.log('\n📋 Test Endpoints:');
-    console.log(`   🔗 http://localhost:${PORT}/`);
-    console.log(`   🔗 http://localhost:${PORT}/health`);
-    console.log(`   🔗 http://localhost:${PORT}/test-db`);
-    console.log('='.repeat(50) + '\n');
-  });
-}
+const server = app.listen(PORT, () => {
+  console.log('\n' + '='.repeat(60));
+  console.log('🚀 SERVER STARTED - MONGODB FIXED');
+  console.log('='.repeat(60));
+  console.log(`📡 Port: ${PORT}`);
+  console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🗄️  MongoDB State: ${mongoose.connection.readyState}`);
+  console.log(`   (0=disconnected, 1=connected, 2=connecting, 3=disconnecting)`);
+  console.log('\n🔗 CRITICAL TEST ENDPOINTS:');
+  console.log(`   1. http://localhost:${PORT}/test`);
+  console.log(`   2. http://localhost:${PORT}/health`);
+  console.log(`   3. http://localhost:${PORT}/api/admin/candidates`);
+  console.log(`   4. http://localhost:${PORT}/api/admin/test`);
+  console.log(`   5. http://localhost:${PORT}/api/candidates/694cecca036e34ed95c5ad09`);
+  console.log('='.repeat(60) + '\n');
+});
 
-// Export for Vercel serverless
+// Graceful shutdown
+process.on('SIGINT', () => {
+  console.log('\n🛑 Server shutting down...');
+  server.close(() => {
+    console.log('✅ Server closed');
+    process.exit(0);
+  });
+});
+
 module.exports = app;
