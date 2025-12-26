@@ -34,10 +34,10 @@ const Login = () => {
         login(response.data.user);
         
         // Redirect based on role
-        if (response.data.user.role === 'admin') {
-          navigate('/admin');
+        if (response.data.user.role === 'user') {
+          navigate('/home');
         } else {
-          navigate('/');
+          navigate('/home');
         }
       }
     } catch (err) {

@@ -312,7 +312,7 @@ const AdminRegister = () => {
         }
         
         // Navigate to admin page
-        navigate("/admin", { 
+        navigate("/Admin-security-payment", { 
           state: { 
             fromRegistration: true,
             adminData: adminDataWithTimestamp 

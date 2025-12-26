@@ -16,7 +16,7 @@ import AdminRegister from "./Admin/pages/AdminRegister.jsx";
 import JobPostForm from "./Admin/pages/JobPostForm"; // ✅ Fixed path
 import AdminProfile from "./Admin/pages/AdminProfile"; // ✅ Fixed path
 import CandidateManagement from "./Admin/components/CandidateManagement.jsx";
-
+import SecurityPayment from "./User/pages/SecurityPayment"; //payment 
 import Home from "./User/pages/Home";
 import About from "./User/pages/About";
 import Pricing from "./User/pages/Pricing";
@@ -34,6 +34,7 @@ import Salary from "./User/pages/Salary";
 import ProtectedRoute from "./User/components/ProtectedRoute";
 import RoleSelection from "./User/pages/RoleSelection";
 import JobManagement from "./Admin/components/JobManagement";
+import AdminSecurityPayment from "./Admin/pages/AdminSecurityPayment";
 
 const App = () => {
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -88,6 +89,7 @@ const App = () => {
                 {/* ✅ Admin Routes - WITHOUT AdminLayout for login/register */}
                 <Route path="/admin-login" element={<AdminLogin />} />
                 <Route path="/admin-register" element={<AdminRegister />} />
+                <Route path="/Admin-security-payment" element={<AdminSecurityPayment />} />
                 
                 {/* ✅ Admin Routes with Layout */}
                 <Route path="/admin" element={<AdminLayout />}>
@@ -114,6 +116,8 @@ const App = () => {
                 <Route path="/register" element={<Register />} />
                 <Route path="/companyreviews" element={<CompanyReviews />} />
                 <Route path="/jobs" element={<JobList />} />
+                <Route path="/security-payment" element={<SecurityPayment />} />
+
                 <Route path="/careeradvice" element={<CareerAdvice />} />
                 <Route path="/help" element={<Help />} />
                 <Route path="/pricing" element={<Pricing />} />
