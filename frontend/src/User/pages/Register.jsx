@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+ 
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import './Register.css';
@@ -13,6 +14,11 @@ const Register = () => {
     password: '',
     confirmPassword: ''
   });
+
+  // payment 
+
+
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -61,7 +67,10 @@ const Register = () => {
         
         // Redirect to home after 2 seconds
         setTimeout(() => {
-          navigate('/home');
+          // navigate('/home');
+           navigate('/security-payment');
+          // window.location.href = "https://razorpay.me/@dhruvrana1487";
+          // window.location.href = "https://rzp.io/rzp/OtfSyE9";
         }, 2000);
       }
     } catch (err) {
