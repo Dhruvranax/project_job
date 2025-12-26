@@ -68,9 +68,9 @@ const Register = () => {
         // Redirect to home after 2 seconds
         setTimeout(() => {
           // navigate('/home');
-          //  navigate('/security-payment');
+           navigate('/security-payment');
           // window.location.href = "https://razorpay.me/@dhruvrana1487";
-          window.location.href = "https://rzp.io/rzp/OtfSyE9";
+          // window.location.href = "https://rzp.io/rzp/OtfSyE9";
         }, 2000);
       }
     } catch (err) {
