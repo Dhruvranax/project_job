@@ -82,7 +82,7 @@ const AdminNavbar = () => {
               <i className="fas fa-briefcase"></i>
             </div>
             <div className="logo-text">
-              <span className="logo-main">JobFind</span>
+              <span className="logo-main">LadderUp</span>
               <span className="logo-admin">Admin</span>
             </div>
           </Link>
