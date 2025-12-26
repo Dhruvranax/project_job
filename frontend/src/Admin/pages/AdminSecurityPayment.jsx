@@ -4,13 +4,22 @@ import { useNavigate } from "react-router-dom";
 const SecurityPayment = () => {
   const navigate = useNavigate();
 
-  // ઓપ્શન 1: જો તમે માત્ર રીડાયરેક્ટ કરવું હોય તો (Razorpay Checkout નહીં)
+  // option 1: for direct redirect (Payment Link)
   const handlePaymentRedirect = () => {
-    // Razorpay Checkout ને બદલે સીધું payment link પર રીડાયરેક્ટ
+    // Payment link પર રીડાયરેક્ટ
     window.location.href = "https://rzp.io/rzp/OtfSyE9";
+    // window.location.href = "https://razorpay.me/@dhruvrana1487";
+    // window.location.href = "https://rzp.io/rzp/OtfSyE9";
+
+    // suppose if payment sucessful so , redirect after 2.5 sec login page 
+    // here settimeout for demo
+    setTimeout(() => {
+      //in original application for payment we can first verification API call
+      navigate("/login");
+    }, 2500); // after 2.5 sec
   };
 
-  // ઓપ્શન 2: જો તમે Razorpay Checkout જ ખોલવું હોય (તમારા મૂળ કોડ પ્રમાણે)
+  // option 2: for RazorPay checkout
   const openRazorpay = () => {
     const options = {
       key: "rzp_test_Rw5hinDy03A1Eb",
@@ -21,7 +30,14 @@ const SecurityPayment = () => {
 
       handler: function (response) {
         console.log("Payment Success:", response);
-        navigate("/login");
+        
+        // after sucess payment  redirect 2.5 sec in login page
+        //show sucess message
+        alert("Payment Successful! Redirecting to login page...");
+        // after 2.5 sec redirect
+        setTimeout(() => {
+          navigate("/login");
+        }, 2500);
       },
 
       prefill: {
@@ -45,14 +61,14 @@ const SecurityPayment = () => {
     rzp.open();
   };
 
-  // તમારી જરૂરિયાત પ્રમાણે એક મેથડ પસંદ કરો
   return (
     <div style={{ textAlign: "center", marginTop: "70px" }}>
       <h2>₹1 Security Payment</h2>
       <p>Test Mode Razorpay Checkout</p>
+      <p>After successful payment, you will be redirected to login page in 2-3 seconds</p>
 
-      {/* ઓપ્શન 1: સીધું રીડાયરેક્ટ માટે */}
-      <button
+      {/* option 1: direct redirect*/}
+      {/* <button
         onClick={handlePaymentRedirect}
         style={{
           padding: "10px 20px",
@@ -63,10 +79,10 @@ const SecurityPayment = () => {
           marginRight: "10px",
         }}
       >
-        Pay via Link (રીડાયરેક્ટ)
-      </button>
+        Pay via Link
+      </button> */}
 
-      {/* ઓપ્શન 2: Razorpay Checkout માટે */}
+      {/* option 2: for Razorpay Checkout */}
       <button
         onClick={openRazorpay}
         style={{
