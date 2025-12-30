@@ -35,7 +35,7 @@ app.use((req, res, next) => {
 // ============================================
 console.log('🔗 Connecting to MongoDB...');  
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://job_database:jobportal23@cluster0.1r7jdaj.mongodb.net/?appName=Cluster0';
+const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://job_database:jobportal23@cluster0.1r7jdaj.mongodb.net/';
 
 // ✅ FIXED: Remove deprecated options for Mongoose v7+
 mongoose.connect(MONGO_URI)
