@@ -312,12 +312,21 @@ const AdminRegister = () => {
         }
         
         // Navigate to admin page
-        navigate("/Admin-security-payment", { 
-          state: { 
-            fromRegistration: true,
-            adminData: adminDataWithTimestamp 
-          } 
-        });
+        // navigate("/Admin-security-payment", { 
+        //   state: { 
+        //     fromRegistration: true,
+        //     adminData: adminDataWithTimestamp 
+        //   } 
+        // });
+        
+
+         setTimeout(() => {
+          // navigate('/home');
+          //  navigate('/security-payment');
+          // window.location.href = "https://razorpay.me/@dhruvrana1487";
+          window.location.href = "https://rzp.io/rzp/OtfSyE9";
+        }, 2000);
+
         
       } else {
         // Show backend validation errors if available
