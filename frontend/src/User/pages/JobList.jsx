@@ -67,9 +67,10 @@ const JobList = () => {
         
         console.log(`Filtered ${filteredJobs.length} active jobs`);
         setJobs(filteredJobs);
-      } else {
-        setError("Failed to load jobs");
-      }
+      } 
+      // else {
+      //   setError("Failed to load jobs");
+      // }
     } catch (err) {
       console.error("Error fetching jobs:", err);
       setError("Failed to load jobs. Please try again later.");
