@@ -15,7 +15,7 @@ const SecurityPayment = () => {
     // here settimeout for demo
     setTimeout(() => {
       //in original application for payment we can first verification API call
-      navigate("/login");
+      navigate("/admin-login");
     }, 2500); // after 2.5 sec
   };
 

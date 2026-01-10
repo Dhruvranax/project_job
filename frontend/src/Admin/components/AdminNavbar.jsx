@@ -64,7 +64,7 @@ const AdminNavbar = () => {
   ];
 
   const messages = [
-    { id: 1, sender: "John Doe", text: "Regarding job posting", time: "10:30 AM", unread: true },
+    { id: 1, sender: "Hetal Parekh", text: "Regarding job posting", time: "10:30 AM", unread: true },
     { id: 2, sender: "HR Team", text: "Meeting scheduled", time: "Yesterday", unread: false },
   ];
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import "./JobPostForm.css";
 
@@ -34,6 +34,14 @@ const JobPostForm = () => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [adminInfo, setAdminInfo] = useState(null);
+  
+  // ============================================
+  // DYNAMIC API URL - LOCALHOST OR PRODUCTION
+  // ============================================
+  const API_BASE_URL = window.location.hostname.includes('localhost') 
+    ? "http://localhost:5000" 
+    : "https://project-job-i2vd.vercel.app";
 
   // Job Types Options
   const jobTypes = [
@@ -59,6 +67,16 @@ const JobPostForm = () => {
   // Work Locations
   const workLocations = ["On-site", "Remote", "Hybrid"];
 
+  // Load admin info on mount
+  useEffect(() => {
+    const adminData = JSON.parse(localStorage.getItem("admin") || '{}');
+    setAdminInfo(adminData);
+    
+    if (!adminData || !adminData.email) {
+      setError("Please login as admin to post jobs");
+    }
+  }, []);
+
   // Handle Input Changes
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -78,6 +96,9 @@ const JobPostForm = () => {
         [name]: type === "checkbox" ? checked : value
       }));
     }
+    
+    // Clear error when user types
+    if (error) setError("");
   };
 
   // Next Step
@@ -124,6 +145,12 @@ const JobPostForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Check admin login
+    if (!adminInfo || !adminInfo.email) {
+      setError("Please login as admin to post jobs");
+      return;
+    }
+    
     // Final validation
     if (!formData.jobTitle.trim() || !formData.companyName.trim() || 
         !formData.location.trim() || !formData.jobDescription.trim()) {
@@ -135,9 +162,6 @@ const JobPostForm = () => {
     setError("");
     
     try {
-      // Get admin data from localStorage
-      const adminData = JSON.parse(localStorage.getItem("admin") || '{}');
-      
       // Prepare job data for backend
       const jobData = {
         jobTitle: formData.jobTitle,
@@ -154,32 +178,76 @@ const JobPostForm = () => {
         benefits: getSelectedBenefits(),
         applicationDeadline: formData.applicationDeadline || null,
         applicationLink: formData.applicationLink || "",
-        postedBy: adminData.email || adminData.fullName || "Admin",
-        status: formData.status
+        postedBy: adminInfo.email || adminInfo.fullName || "Admin",
+        postedByAdminId: adminInfo._id,
+        status: formData.status === "Published" ? "Active" : "Draft",
+        views: 0,
+        applications: 0
       };
       
-      console.log("Submitting job:", jobData);
+      console.log("📤 Submitting job to:", `${API_BASE_URL}/api/jobs`);
+      console.log("📝 Job data:", jobData);
       
-      // Send to backend API
+      // ✅ USE DYNAMIC API URL
       const response = await axios.post(
-        "https://project-job-i2vd.vercel.app/api/jobs",
-        jobData
+        `${API_BASE_URL}/api/jobs/create`,
+        jobData,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          timeout: 10000
+        }
       );
+      
+      console.log("✅ Job submission response:", response.data);
       
       if (response.data.success) {
         setSuccess(true);
-        setLoading(false);
         
-        // Reset form after 2 seconds
+        // Show success message
         setTimeout(() => {
+          // Reset form
           resetForm();
           setCurrentStep(1);
           setSuccess(false);
-        }, 99999999);
+          
+          // Redirect to admin dashboard or jobs list
+          window.location.href = "/admin/jobs";
+        },50000);
+      } else {
+        setError(response.data.message || "Failed to post job");
       }
     } catch (error) {
-      console.error("Error submitting job:", error);
-      setError(error.response?.data?.error || "Failed to post job. Please try again.");
+      console.error("❌ Error submitting job:", error);
+      
+      if (error.code === 'ERR_NETWORK') {
+        setError(
+          <div>
+            <strong>🌐 Network Error!</strong><br/>
+            <small className="text-muted">
+              Cannot connect to server at: {API_BASE_URL}<br/>
+              Please make sure backend is running.
+            </small>
+            <div className="mt-2">
+              <button 
+                className="btn btn-sm btn-outline-warning"
+                onClick={() => window.open(API_BASE_URL, '_blank')}
+              >
+                Test Backend
+              </button>
+            </div>
+          </div>
+        );
+      } else if (error.response?.status === 401 || error.response?.status === 403) {
+        setError("You are not authorized to post jobs. Please login as admin.");
+      } else if (error.response?.status === 404) {
+        setError("Job posting endpoint not found. Please check backend routes.");
+      } else {
+        setError(error.response?.data?.error || error.response?.data?.message || "Failed to post job. Please try again.");
+      }
+    } finally {
       setLoading(false);
     }
   };
@@ -253,6 +321,7 @@ const JobPostForm = () => {
             onChange={handleChange}
             placeholder="https://example.com/logo.png"
           />
+          <small className="text-muted">Optional - for better job display</small>
         </div>
 
         <div className="form-group">
@@ -289,7 +358,7 @@ const JobPostForm = () => {
             name="salaryRange"
             value={formData.salaryRange}
             onChange={handleChange}
-            placeholder="e.g., $50,000 - $70,000"
+            placeholder="e.g., ₹50,000 - ₹70,000 per month"
           />
         </div>
       </div>
@@ -310,7 +379,7 @@ const JobPostForm = () => {
             name="location"
             value={formData.location}
             onChange={handleChange}
-            placeholder="e.g., New York, NY or Remote"
+            placeholder="e.g., Ahmedabad, Gujarat or Remote"
             required
           />
         </div>
@@ -338,6 +407,7 @@ const JobPostForm = () => {
             rows="6"
             required
           />
+          <small className="text-muted">Describe the role, requirements, and expectations</small>
         </div>
 
         <div className="form-group full-width">
@@ -349,7 +419,7 @@ const JobPostForm = () => {
             placeholder="List key responsibilities (one per line)..."
             rows="4"
           />
-          <small className="hint">Enter each responsibility on a new line</small>
+          <small className="text-muted">Enter each responsibility on a new line</small>
         </div>
       </div>
     </div>
@@ -436,13 +506,14 @@ const JobPostForm = () => {
             </label>
           </div>
 
-          <div className="other-benefits">
+          <div className="other-benefits mt-2">
             <input
               type="text"
               name="benefits.other"
               value={formData.benefits.other}
               onChange={handleChange}
               placeholder="Other benefits (comma separated)"
+              className="form-control"
             />
           </div>
         </div>
@@ -454,7 +525,9 @@ const JobPostForm = () => {
             name="applicationDeadline"
             value={formData.applicationDeadline}
             onChange={handleChange}
+            className="form-control"
           />
+          <small className="text-muted">Optional - leave blank for no deadline</small>
         </div>
 
         <div className="form-group">
@@ -465,7 +538,9 @@ const JobPostForm = () => {
             value={formData.applicationLink}
             onChange={handleChange}
             placeholder="https://example.com/apply"
+            className="form-control"
           />
+          <small className="text-muted">Optional - external application link</small>
         </div>
 
         <div className="form-group">
@@ -496,14 +571,17 @@ const JobPostForm = () => {
       </div>
 
       {/* Preview Section */}
-      <div className="preview-section">
-        <h4>Job Preview</h4>
+      <div className="preview-section mt-4">
+        <h4>📋 Job Preview</h4>
         <div className="preview-card">
-          <h4>{formData.jobTitle || "Job Title"}</h4>
+          <h5>{formData.jobTitle || "Job Title"}</h5>
           <p><strong>Company:</strong> {formData.companyName || "Company Name"}</p>
           <p><strong>Location:</strong> {formData.location || "Location"}</p>
           <p><strong>Type:</strong> {formData.jobType} | <strong>Experience:</strong> {formData.experienceLevel}</p>
-          <p><strong>Status:</strong> {formData.status}</p>
+          <p><strong>Salary:</strong> {formData.salaryRange || "Not specified"}</p>
+          <p><strong>Status:</strong> <span className={`badge ${formData.status === "Published" ? "bg-success" : "bg-warning"}`}>
+            {formData.status === "Published" ? "Active" : "Draft"}
+          </span></p>
         </div>
       </div>
     </div>
@@ -528,6 +606,24 @@ const JobPostForm = () => {
 
   return (
     <div className="job-post-container">
+      {/* Connection Info */}
+      <div className="alert alert-info mb-4">
+        <small>
+          <strong>🔧 API Status:</strong> {API_BASE_URL}<br/>
+          {API_BASE_URL.includes('localhost') && (
+            <span className="text-muted">
+              Make sure backend server is running on port 5000
+            </span>
+          )}
+          {adminInfo && (
+            <>
+              <br/>
+              <strong>👔 Logged in as:</strong> {adminInfo.fullName} ({adminInfo.companyName})
+            </>
+          )}
+        </small>
+      </div>
+
       <div className="job-post-header">
         <h1>Post a New Job</h1>
         <p>Fill in the details below to create a job posting</p>
@@ -556,14 +652,22 @@ const JobPostForm = () => {
 
       {/* Messages */}
       {success && (
-        <div className="success-message">
-          ✅ Job posted successfully! Redirecting...
+        <div className="alert alert-success">
+          <strong>✅ Success!</strong> Job posted successfully! Redirecting...
         </div>
       )}
 
       {error && (
-        <div className="error-message">
-          ❌ {error}
+        <div className="alert alert-danger">
+          <strong>❌ Error:</strong> {error}
+        </div>
+      )}
+
+      {/* Admin Check */}
+      {!adminInfo?.email && (
+        <div className="alert alert-warning">
+          <strong>⚠️ Admin Login Required</strong><br/>
+          Please <a href="/admin-login" className="alert-link">login as admin</a> to post jobs.
         </div>
       )}
 
@@ -572,12 +676,12 @@ const JobPostForm = () => {
         {renderStepContent()}
 
         {/* Navigation Buttons */}
-        <div className="form-navigation">
+        <div className="form-navigation mt-4">
           {currentStep > 1 && (
             <button
               type="button"
               onClick={prevStep}
-              className="btn btn-secondary"
+              className="btn btn-outline-secondary"
               disabled={loading}
             >
               ← Previous
@@ -590,19 +694,37 @@ const JobPostForm = () => {
                 type="button"
                 onClick={nextStep}
                 className="btn btn-primary"
-                disabled={loading}
+                disabled={loading || !adminInfo?.email}
               >
                 Next →
               </button>
             ) : (
               <button
                 type="submit"
-                className="btn btn-submit"
-                disabled={loading}
+                className={`btn ${formData.status === "Published" ? "btn-success" : "btn-warning"}`}
+                disabled={loading || !adminInfo?.email}
               >
-                {loading ? "Processing..." : formData.status === "Draft" ? "Save as Draft" : "Publish Job"}
+                {loading ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2"></span>
+                    Processing...
+                  </>
+                ) : formData.status === "Draft" ? (
+                  "💾 Save as Draft"
+                ) : (
+                  "🚀 Publish Job"
+                )}
               </button>
             )}
+            
+            <button
+              type="button"
+              onClick={resetForm}
+              className="btn btn-outline-danger ms-2"
+              disabled={loading}
+            >
+              Reset Form
+            </button>
           </div>
         </div>
       </form>

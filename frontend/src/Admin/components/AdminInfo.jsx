@@ -4,9 +4,112 @@ import { useAdmin } from "../../context/AdminContext";
 import "./AdminInfo.css";
 
 const AdminInfo = () => {
-  const { admin, loading, isAuthenticated } = useAdmin();
+  const { admin, loading, isAuthenticated, candidates } = useAdmin();
   const [debugInfo, setDebugInfo] = useState("");
-  
+  const [stats, setStats] = useState({
+    activeJobs: 0,
+    totalApplications: 0,
+    totalCandidates: 0,
+    pendingApplications: 0
+  });
+  const [adminJobs, setAdminJobs] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // API Base URL
+  const API_BASE_URL = window.location.hostname.includes('localhost') 
+    ? "http://localhost:5000" 
+    : "https://project-job-i2vd.vercel.app";
+
+  // Fetch admin stats and data
+  useEffect(() => {
+    const fetchAdminData = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Get admin info from localStorage as fallback
+        const savedAdmin = localStorage.getItem('admin');
+        const adminData = admin || (savedAdmin ? JSON.parse(savedAdmin) : null);
+        
+        if (!adminData || !adminData.email) {
+          setIsLoading(false);
+          return;
+        }
+
+        console.log("🔄 Fetching admin data for:", adminData.email);
+        
+        // 1. Fetch admin's jobs
+        const jobsResponse = await fetch(`${API_BASE_URL}/api/jobs`);
+        if (jobsResponse.ok) {
+          const jobsData = await jobsResponse.json();
+          if (jobsData.success) {
+            // Filter jobs by admin email
+            const adminJobsList = jobsData.jobs.filter(job => 
+              job.postedBy === adminData.email || 
+              (adminData.companyName && job.companyName?.toLowerCase().includes(adminData.companyName.toLowerCase()))
+            );
+            
+            setAdminJobs(adminJobsList);
+            
+            // Calculate active jobs
+            const activeJobsCount = adminJobsList.filter(job => 
+              job.status === 'Active' || job.status === 'Published'
+            ).length;
+            
+            setStats(prev => ({ ...prev, activeJobs: activeJobsCount }));
+          }
+        }
+
+        // 2. Fetch all applications
+        const appsResponse = await fetch(`${API_BASE_URL}/api/applications`);
+        if (appsResponse.ok) {
+          const appsData = await appsResponse.json();
+          if (appsData.success) {
+            // Filter applications for admin's jobs
+            const adminJobIds = adminJobs.map(job => job._id);
+            const adminApplications = appsData.applications.filter(app => 
+              adminJobIds.includes(app.jobId)
+            );
+            
+            const totalApplications = adminApplications.length;
+            const pendingApplications = adminApplications.filter(app => 
+              app.status === 'Pending'
+            ).length;
+            
+            setStats(prev => ({
+              ...prev,
+              totalApplications: totalApplications,
+              pendingApplications: pendingApplications,
+              totalCandidates: totalApplications // Each application = one candidate
+            }));
+          }
+        }
+
+        // 3. Try admin stats endpoint
+        try {
+          const statsResponse = await fetch(`${API_BASE_URL}/api/admin/stats`);
+          if (statsResponse.ok) {
+            const statsData = await statsResponse.json();
+            if (statsData.success) {
+              setStats(prev => ({
+                ...prev,
+                ...statsData.stats
+              }));
+            }
+          }
+        } catch (error) {
+          console.log("Admin stats endpoint not available");
+        }
+
+      } catch (error) {
+        console.error("❌ Error fetching admin data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAdminData();
+  }, [admin, API_BASE_URL]);
+
   useEffect(() => {
     console.log("AdminInfo - Admin state:", admin);
     console.log("AdminInfo - isAuthenticated:", isAuthenticated);
@@ -45,6 +148,26 @@ const AdminInfo = () => {
   };
   
   const adminName = getAdminDisplayName();
+
+  // Get recent applications (last 5)
+  const getRecentApplications = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/applications`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          const adminJobIds = adminJobs.map(job => job._id);
+          const adminApps = data.applications.filter(app => 
+            adminJobIds.includes(app.jobId)
+          );
+          return adminApps.slice(0, 5); // Last 5 applications
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching recent applications:", error);
+    }
+    return [];
+  };
 
   const adminBenefits = [
     {
@@ -157,7 +280,7 @@ const AdminInfo = () => {
     {
       id: 2,
       title: "View Jobs",
-      description: "Manage your job postings",
+      description: `Manage your ${adminJobs.length} job postings`,
       icon: "fas fa-briefcase",
       color: "success",
       link: "/admin/jobs",
@@ -166,7 +289,7 @@ const AdminInfo = () => {
     {
       id: 3,
       title: "Candidates",
-      description: "Review job applications",
+      description: `Review ${stats.totalApplications} job applications`,
       icon: "fas fa-users",
       color: "info",
       link: "/admin/candidates",
@@ -182,6 +305,15 @@ const AdminInfo = () => {
       disabled: !adminName
     }
   ];
+
+  if (isLoading) {
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <p className="loading-text">Loading admin dashboard...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="admin-info-page">
@@ -199,7 +331,7 @@ const AdminInfo = () => {
                 <>
                   <div className="welcome-badge">
                     <i className="fas fa-user-tie"></i>
-                    Welcome back
+                    Welcome back, {admin?.companyName ? `${admin.companyName} Admin` : 'Admin'}
                   </div>
                   <h1 className="hero-title">
                     Hi, <span className="text-gradient">{adminName}</span>!
@@ -210,20 +342,25 @@ const AdminInfo = () => {
                   
                   <div className="hero-stats">
                     <div className="stat-item">
-                      <div className="stat-number">0</div>
+                      <div className="stat-number">{stats.activeJobs}</div>
                       <div className="stat-label">Active Jobs</div>
                     </div>
                     <div className="stat-item">
-                      <div className="stat-number">0</div>
+                      <div className="stat-number">{stats.totalApplications}</div>
                       <div className="stat-label">Applications</div>
                     </div>
                     <div className="stat-item">
-                      <div className="stat-number">0</div>
+                      <div className="stat-number">{stats.totalCandidates}</div>
                       <div className="stat-label">Candidates</div>
+                    </div>
+                    <div className="stat-item">
+                      <div className="stat-number">{stats.pendingApplications}</div>
+                      <div className="stat-label">Pending Review</div>
                     </div>
                   </div>
                 </>
-              ) : (
+
+              ) : ( 
                 <>
                   <div className="welcome-badge">
                     <i className="fas fa-briefcase"></i>
@@ -308,15 +445,149 @@ const AdminInfo = () => {
         </section>
       )}
 
+      {/* Admin Stats Overview */}
+      {adminName && adminJobs.length > 0 && (
+        <section className="stats-overview-section">
+          <div className="container">
+            <div className="section-header">
+              <h2>Your Hiring Overview</h2>
+              <p>Real-time insights about your recruitment activities</p>
+            </div>
+            
+            <div className="stats-cards">
+              <div className="stats-card primary">
+                <div className="stats-icon">
+                  <i className="fas fa-briefcase"></i>
+                </div>
+                <div className="stats-content">
+                  <h3>{adminJobs.length}</h3>
+                  <p>Total Jobs Posted</p>
+                </div>
+                <div className="stats-trend">
+                  <i className="fas fa-arrow-up"></i>
+                  <span>Active: {stats.activeJobs}</span>
+                </div>
+              </div>
+              
+              <div className="stats-card success">
+                <div className="stats-icon">
+                  <i className="fas fa-users"></i>
+                </div>
+                <div className="stats-content">
+                  <h3>{stats.totalApplications}</h3>
+                  <p>Total Applications</p>
+                </div>
+                <div className="stats-trend">
+                  <i className="fas fa-clock"></i>
+                  <span>Pending: {stats.pendingApplications}</span>
+                </div>
+              </div>
+              
+              <div className="stats-card warning">
+                <div className="stats-icon">
+                  <i className="fas fa-chart-line"></i>
+                </div>
+                <div className="stats-content">
+                  <h3>
+                    {adminJobs.length > 0 
+                      ? Math.round((stats.totalApplications / adminJobs.length) * 10) / 10 
+                      : 0}
+                  </h3>
+                  <p>Avg. Applications per Job</p>
+                </div>
+                <div className="stats-trend">
+                  <i className="fas fa-calculator"></i>
+                  <span>Across {adminJobs.length} jobs</span>
+                </div>
+              </div>
+              
+              <div className="stats-card info">
+                <div className="stats-icon">
+                  <i className="fas fa-user-check"></i>
+                </div>
+                <div className="stats-content">
+                  <h3>
+                    {stats.totalApplications > 0 
+                      ? Math.round(((stats.totalApplications - stats.pendingApplications) / stats.totalApplications) * 100) 
+                      : 0}%
+                  </h3>
+                  <p>Applications Reviewed</p>
+                </div>
+                <div className="stats-trend">
+                  <i className="fas fa-chart-pie"></i>
+                  <span>Completion Rate</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Recent Activity */}
+            <div className="recent-activity">
+              <h3>Recent Activity</h3>
+              <div className="activity-list">
+                {adminJobs.slice(0, 3).map(job => (
+                  <div key={job._id} className="activity-item">
+                    <div className="activity-icon">
+                      <i className="fas fa-briefcase"></i>
+                    </div>
+                    <div className="activity-content">
+                      <h4>{job.jobTitle || job.title}</h4>
+                      <p>
+                        <span className="activity-stat">
+                          <i className="fas fa-user-friends"></i>
+                          {job.applications || 0} applications
+                        </span>
+                        <span className="activity-stat">
+                          <i className="fas fa-eye"></i>
+                          {job.views || 0} views
+                        </span>
+                      </p>
+                    </div>
+                    <div className="activity-status">
+                      <span className={`status-badge ${job.status === 'Active' ? 'active' : 'inactive'}`}>
+                        {job.status || 'Draft'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                
+                {adminJobs.length === 0 && (
+                  <div className="activity-item empty">
+                    <div className="activity-icon">
+                      <i className="fas fa-inbox"></i>
+                    </div>
+                    <div className="activity-content">
+                      <h4>No jobs posted yet</h4>
+                      <p>Post your first job to start receiving applications</p>
+                    </div>
+                    <div className="activity-status">
+                      <Link to="/admin/post-job" className="btn-small">
+                        Post Job
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Job Posting Promo Section */}
       <section className="promo-section">
         <div className="container">
           <div className="promo-content">
             <div className="promo-text">
-              <h2>Start Hiring Today!</h2>
+              <h2>
+                {adminName 
+                  ? `Start Hiring Today, ${adminName.split(' ')[0]}!`
+                  : "Start Hiring Today!"
+                }
+              </h2>
               <p>
-                Post your first job in minutes and reach thousands of qualified candidates. 
-                Our platform makes hiring simple and effective.
+                {adminName 
+                  ? `You have ${stats.activeJobs} active job${stats.activeJobs !== 1 ? 's' : ''}. Post more jobs to reach thousands of qualified candidates.`
+                  : "Post your first job in minutes and reach thousands of qualified candidates. Our platform makes hiring simple and effective."
+                }
               </p>
               <div className="promo-features">
                 <div className="feature">
@@ -337,7 +608,7 @@ const AdminInfo = () => {
               {adminName ? (
                 <Link to="/admin/post-job" className="promo-btn">
                   <i className="fas fa-plus-circle"></i>
-                  Post Your First Job
+                  {adminJobs.length > 0 ? "Post Another Job" : "Post Your First Job"}
                 </Link>
               ) : (
                 <div className="promo-auth">
@@ -440,15 +711,33 @@ const AdminInfo = () => {
           <div className="cta-content">
             <div className="cta-text">
               <h2>Ready to Transform Your Hiring?</h2>
-              <p>Join hundreds of companies using JobFind Admin to find perfect candidates.</p>
+              <p>
+                {adminName 
+                  ? `You're already making progress with ${stats.totalApplications} applications! Continue to grow.`
+                  : "Join hundreds of companies using JobFind Admin to find perfect candidates."
+                }
+              </p>
             </div>
             <div className="cta-actions">
-              <Link to="/admin-register" className="btn-primary">
-                Start Free Trial
-              </Link>
-              <Link to="/contact" className="btn-outline">
-                Schedule Demo
-              </Link>
+              {adminName ? (
+                <>
+                  <Link to="/admin/jobs" className="btn-primary">
+                    View All Jobs
+                  </Link>
+                  <Link to="/admin/candidates" className="btn-outline">
+                    Manage Candidates
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link to="/admin-register" className="btn-primary">
+                    Start Free Trial
+                  </Link>
+                  <Link to="/contact" className="btn-outline">
+                    Schedule Demo
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

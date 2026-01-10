@@ -4,8 +4,6 @@ import { useAdmin } from "../../context/AdminContext";
 import axios from "axios";
 import "./Auth.css";
 
-const API_URL = "https://project-job-i2vd.vercel.app/api";
-
 const AdminLogin = () => {
   const [formData, setFormData] = useState({
     email: "",
@@ -18,6 +16,13 @@ const AdminLogin = () => {
   const navigate = useNavigate();
   const { login } = useAdmin();
 
+  // ============================================
+  // DYNAMIC API URL - LOCALHOST OR PRODUCTION
+  // ============================================
+  const API_BASE_URL = window.location.hostname.includes('localhost') 
+    ? "http://localhost:5000" 
+    : "https://project-job-i2vd.vercel.app";
+
   // Check database connection on mount
   useEffect(() => {
     checkDatabase();
@@ -25,17 +30,18 @@ const AdminLogin = () => {
 
   const checkDatabase = async () => {
     try {
-      const response = await axios.get(`${API_URL}/`, { timeout: 3000 });
-      console.log("Server check:", response.data);
+      console.log("🔍 Checking database at:", API_BASE_URL);
+      const response = await axios.get(`${API_BASE_URL}/`, { timeout: 3000 });
+      console.log("✅ Server check:", response.data);
       
       if (response.data.message) {
-        setDbStatus(`✅ Server Connected`);
+        setDbStatus(`✅ Server Connected (${API_BASE_URL})`);
       } else {
-        setDbStatus("❌ Server Not Ready");
+        setDbStatus("⚠️ Server Not Ready");
       }
     } catch (error) {
-      console.error("Server check failed:", error.message);
-      setDbStatus("❌ Cannot connect to server");
+      console.error("❌ Server check failed:", error.message);
+      setDbStatus(`❌ Cannot connect to: ${API_BASE_URL}`);
     }
   };
 
@@ -59,29 +65,33 @@ const AdminLogin = () => {
       return;
     }
     
-    console.log("Logging in:", formData.email);
-    // console.log("Using endpoint:", `${API_URL}/admin/login`);
+    console.log("🔐 Logging in:", formData.email);
+    console.log("🌐 Using endpoint:", `${API_BASE_URL}/api/admin/login`);
     
     try {
-      // ✅ Use the correct admin login route
+      // ✅ USE DYNAMIC API URL
       const response = await axios.post(
-        `${API_URL}/admin/login`,
+        `${API_BASE_URL}/api/admin/login`,
         {
           email: formData.email,
           password: formData.password
         },
-        { timeout: 5000 }
+        { 
+          timeout: 10000,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
       );
       
-      console.log("Login response:", response.data);
+      console.log("✅ Login response:", response.data);
       
       if (response.data.success) {
         const adminData = response.data.admin;
         const token = response.data.token;
         
-console.log("✅ Token received:", token ? "Yes" : "No");
+        console.log("🔑 Token received:", token ? "Yes" : "No");
 
-        // Format for context
         const formattedAdmin = {
           _id: adminData._id,
           fullName: adminData.fullName,
@@ -92,14 +102,11 @@ console.log("✅ Token received:", token ? "Yes" : "No");
           loginTime: new Date().toISOString()
         };
         
-        // ✅ Save to context
         login(formattedAdmin);
         
-        // ✅ Save to localStorage for persistence
         localStorage.setItem("admin", JSON.stringify(formattedAdmin));
         localStorage.setItem("adminToken", token);
         
-        // Redirect to admin dashboard
         navigate("/admin", { replace: true });
         
       } else {
@@ -107,15 +114,28 @@ console.log("✅ Token received:", token ? "Yes" : "No");
       }
       
     } catch (error) {
-      console.error("Login error:", error.response?.data || error.message);
+      console.error("❌ Login error:", error);
       
-      // Show user-friendly error
       if (error.response?.status === 404 || error.response?.status === 401) {
         setError(error.response.data.message || "Invalid email or password");
-      } else if (error.code === 'ECONNREFUSED') {
-        setError("Server is not running. Please start backend server.");
       } else if (error.code === 'ERR_NETWORK') {
-        setError("Network error. Please check your connection.");
+        setError(
+          <div>
+            <strong>🌐 Network Error!</strong><br/>
+            <small className="text-muted">
+              Cannot connect to server at: {API_BASE_URL}<br/>
+              Please make sure backend is running.
+            </small>
+            <div className="mt-2">
+              <button 
+                className="btn btn-sm btn-outline-warning"
+                onClick={() => window.open(API_BASE_URL, '_blank')}
+              >
+                Test Backend
+              </button>
+            </div>
+          </div>
+        );
       } else if (error.response?.status === 500) {
         setError("Server error. Please try again later.");
       } else {
@@ -129,13 +149,13 @@ console.log("✅ Token received:", token ? "Yes" : "No");
   const handleTestLogin = (testEmail) => {
     setFormData({
       email: testEmail,
-      password: "123456" // Default test password
+      password: "123456"
     });
   };
 
   const checkAllAdmins = async () => {
     try {
-      const response = await axios.get(`${API_URL}/admin`);
+      const response = await axios.get(`${API_BASE_URL}/api/admin`);
       alert(`Total Admins in DB: ${response.data.count || 0}`);
     } catch (error) {
       alert("Cannot fetch admins list");
@@ -154,6 +174,12 @@ console.log("✅ Token received:", token ? "Yes" : "No");
               <i className={`fas ${dbStatus.includes("✅") ? "fa-check-circle" : "fa-exclamation-triangle"} me-1`}></i>
               {dbStatus}
             </div>
+          </div>
+          
+          {/* API Info */}
+          <div className="alert alert-info small py-1 px-2 mb-3">
+            <i className="fas fa-server me-1"></i>
+            <strong>API URL:</strong> {API_BASE_URL}
           </div>
         </div>
         
@@ -183,6 +209,15 @@ console.log("✅ Token received:", token ? "Yes" : "No");
               >
                 <i className="fas fa-database me-1"></i>
                 Check All Admins
+              </button>
+              
+              <button 
+                type="button"
+                className="btn btn-outline-warning btn-sm"
+                onClick={checkDatabase}
+              >
+                <i className="fas fa-sync me-1"></i>
+                Recheck Connection
               </button>
             </div>
             <small className="text-muted d-block text-center mt-1">
@@ -227,10 +262,6 @@ console.log("✅ Token received:", token ? "Yes" : "No");
                   disabled={loading}
                 />
               </div>
-              <small className="text-muted">
-                <i className="fas fa-route me-1"></i>
-                Using route: <code>/api/admin/login</code>
-              </small>
             </div>
             
             <button 
@@ -268,11 +299,13 @@ console.log("✅ Token received:", token ? "Yes" : "No");
         <div className="auth-footer text-center mt-3">
           <p className="text-muted small">
             <i className="fas fa-info-circle me-1"></i>
-            Ensure backend server is running on port 5000
+            {API_BASE_URL.includes('localhost') 
+              ? 'Ensure backend server is running on port 5000' 
+              : 'Connected to production server'}
           </p>
           <p className="text-muted small">
             <i className="fas fa-route me-1"></i>
-            Route: <code>POST /api/admin/login</code>
+            Route: <code>POST {API_BASE_URL}/api/admin/login</code>
           </p>
         </div>
       </div>

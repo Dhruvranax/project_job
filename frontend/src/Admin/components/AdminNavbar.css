@@ -1,7 +1,7 @@
 /* AdminNavbar.css - Modern & Clean Design */
 
 .admin-navbar {
-  background: #ffffff;
+  background: #f4cddd;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
   border-bottom: 1px solid #eaeaea;
   position: sticky;
@@ -109,7 +109,7 @@
 .navbar-right {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 100px;
 }
 
 /* Search Bar */
@@ -120,11 +120,11 @@
 
 .search-icon {
   position: absolute;
-  left: 12px;
+  left: 0px;
   top: 50%;
   transform: translateY(-50%);
   color: #94a3b8;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .search-input {
@@ -213,7 +213,7 @@
 }
 
 .user-profile-btn:hover {
-  background: #f8fafc;
+  background: #f0d7cf;
   border-color: #cbd5e1;
 }
 
@@ -221,7 +221,7 @@
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #667eea 0%, #a24b4b 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -240,7 +240,7 @@
 .user-name {
   font-size: 14px;
   font-weight: 600;
-  color: #2d3748;
+  color: #00ff1a;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -249,7 +249,7 @@
 
 .user-role {
   font-size: 11px;
-  color: #64748b;
+  color: #1275ff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -258,12 +258,12 @@
 
 .dropdown-arrow {
   font-size: 12px;
-  color: #94a3b8;
+  color: #df0000;
   transition: transform 0.2s ease;
 }
 
 .dropdown-arrow.rotate {
-  transform: rotate(180deg);
+  transform: rotate(-200deg);
 }
 
 /* Dropdown Cards */
@@ -271,7 +271,7 @@
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  background: white;
+  background: rgb(5, 77, 232);
   border-radius: 12px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
   border: 1px solid #e2e8f0;
@@ -306,7 +306,7 @@
 /* Dropdown Header */
 .dropdown-header {
   padding: 16px 20px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #1569d8;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -332,7 +332,7 @@
 }
 
 .mark-read-btn:hover {
-  background: #f8fafc;
+  background: #0984ff;
 }
 
 /* Dropdown Content */
@@ -489,9 +489,9 @@
 
 .dropdown-user-info h4 {
   margin: 0 0 4px 0;
-  font-size: 16px;
+  font-size: 29px;
   font-weight: 600;
-  color: #2d3748;
+  color: #fc2626;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -499,8 +499,8 @@
 
 .dropdown-user-info p {
   margin: 0;
-  font-size: 13px;
-  color: #64748b;
+  font-size: 15px;
+  color: #fe0000;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -533,13 +533,13 @@
 
 .dropdown-item i {
   width: 20px;
-  color: #64748b;
+  color: #84e801;
   font-size: 16px;
 }
 
 .dropdown-divider {
   height: 1px;
-  background: #e2e8f0;
+  background: #4d0006;
   margin: 8px 0;
 }
 
@@ -559,7 +559,7 @@
 }
 
 .dropdown-footer a {
-  color: #667eea;
+  color: #3953c7;
   font-size: 13px;
   font-weight: 500;
   text-decoration: none;

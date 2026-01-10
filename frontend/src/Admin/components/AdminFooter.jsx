@@ -67,7 +67,7 @@ const AdminFooter = () => {
           <div className="footer-col">
             <h4 className="col-title">Platform</h4>
             <ul className="footer-links">
-              <li><a href="/admin/dashboard"><FaHome /> Dashboard</a></li>
+              <li><a href="/admin/dashboard"><FaHome /> Dashboard </a></li>
               <li><a href="/admin/jobs"><FaBriefcase /> Jobs</a></li>
               <li><a href="/admin/candidates"><FaUsers /> Candidates</a></li>
               <li><a href="/admin/applications"><FaFileAlt /> Applications</a></li>
