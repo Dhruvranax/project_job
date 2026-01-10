@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import axios from "axios";
+import "./JobDetails.css";
 
 const JobDetails = () => {
   const { id } = useParams();
@@ -20,6 +21,79 @@ const JobDetails = () => {
   const [message, setMessage] = useState({ text: "", type: "" });
   const [hasApplied, setHasApplied] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [isAdminJob, setIsAdminJob] = useState(false);
+  const [adminInfo, setAdminInfo] = useState(null);
+  
+  // API Base URL
+  const API_BASE_URL = window.location.hostname.includes('localhost') 
+    ? "http://localhost:5000" 
+    : "https://project-job-i2vd.vercel.app";
+  
+  // Helper function to render content (array or string)
+  const renderContent = (content) => {
+    if (!content) return <p className="no-content">No content available.</p>;
+    
+    if (Array.isArray(content)) {
+      return (
+        <ul>
+          {content.map((item, index) => (
+            <li key={index}>{item}</li>
+          ))}
+        </ul>
+      );
+    }
+    
+    if (typeof content === 'string') {
+      return <div dangerouslySetInnerHTML={{ __html: content.replace(/\n/g, '<br>') }} />;
+    }
+    
+    if (typeof content === 'object') {
+      return (
+        <ul>
+          {Object.values(content).map((value, index) => (
+            <li key={index}>{value}</li>
+          ))}
+        </ul>
+      );
+    }
+    
+    return <p className="no-content">No content available.</p>;
+  };
+  
+  // Helper function for skills
+  const renderSkills = (skills) => {
+    if (!skills) return null;
+    
+    if (Array.isArray(skills)) {
+      return skills.map((skill, index) => (
+        <span key={index} className="skill-tag">{skill}</span>
+      ));
+    }
+    
+    if (typeof skills === 'string') {
+      return skills.split(',').map((skill, index) => (
+        <span key={index} className="skill-tag">{skill.trim()}</span>
+      ));
+    }
+    
+    return null;
+  };
+  
+  // Check if user is admin from localStorage
+  const getAdminData = () => {
+    try {
+      const savedAdmin = localStorage.getItem('admin');
+      if (savedAdmin) {
+        return JSON.parse(savedAdmin);
+      }
+    } catch (error) {
+      console.error("Error parsing admin data:", error);
+    }
+    return null;
+  };
+  
+  const admin = getAdminData();
+  const isAdminAuthenticated = !!admin;
   
   // Fetch job details
   useEffect(() => {
@@ -27,12 +101,34 @@ const JobDetails = () => {
     checkIfSaved();
   }, [id]);
   
-  // Check if user has applied
+  // Check if user has applied and if admin job
   useEffect(() => {
     if (job && user && isAuthenticated) {
       checkIfUserApplied();
+      checkIfAdminJob();
     }
-  }, [job, user, isAuthenticated]);
+  }, [job, user, isAuthenticated, admin]);
+  
+  // Check if this is admin's own job
+  const checkIfAdminJob = () => {
+    if (!job || !admin) {
+      setIsAdminJob(false);
+      return;
+    }
+    
+    // Check if admin posted this job
+    const isOwnJob = admin.email && job.postedBy === admin.email;
+    setIsAdminJob(isOwnJob);
+    
+    if (isOwnJob) {
+      setAdminInfo({
+        isOwner: true,
+        canEdit: true,
+        canDelete: true,
+        canViewApplications: true
+      });
+    }
+  };
   
   // Update resume field when user changes
   useEffect(() => {
@@ -47,15 +143,50 @@ const JobDetails = () => {
   const fetchJobDetails = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`https://project-job-i2vd.vercel.app/api/jobs/${id}`);
+      console.log(`🔄 Fetching job details for ID: ${id}`);
       
-      if (response.data.success) {
-        setJob(response.data.job);
+      // First try the specific endpoint
+      try {
+        const response = await axios.get(`${API_BASE_URL}/api/jobs/${id}`);
+        
+        console.log("📊 Job details response:", response.data);
+        
+        if (response.data.success) {
+          setJob(response.data.job);
+          return;
+        }
+      } catch (apiError) {
+        console.log("Trying alternative endpoint...");
       }
+      
+      // Fallback: Get all jobs and find by ID
+      const allJobsResponse = await axios.get(`${API_BASE_URL}/api/jobs`);
+      if (allJobsResponse.data.success) {
+        const foundJob = allJobsResponse.data.jobs.find(j => j._id === id);
+        if (foundJob) {
+          setJob(foundJob);
+        } else {
+          setMessage({ 
+            text: "Job not found", 
+            type: "error" 
+          });
+        }
+      }
+      
     } catch (error) {
-      console.error("Error fetching job:", error);
+      console.error("❌ Error fetching job:", error);
+      
+      let errorMessage = "Failed to load job details";
+      if (error.response) {
+        if (error.response.status === 404) {
+          errorMessage = "Job not found or has been removed";
+        } else {
+          errorMessage = error.response.data?.message || errorMessage;
+        }
+      }
+      
       setMessage({ 
-        text: "Fail to load Job Detail", 
+        text: errorMessage, 
         type: "error" 
       });
     } finally {
@@ -65,26 +196,19 @@ const JobDetails = () => {
   
   const checkIfUserApplied = async () => {
     try {
-      // Try the check-application endpoint first
-      try {
-        const response = await axios.get(
-          `https://project-job-i2vd.vercel.app/api/jobs/${id}/check-application/${user._id}`
-        );
-        
-        if (response.data.success) {
-          setHasApplied(response.data.hasApplied);
-          return;
-        }
-      } catch (apiError) {
-        console.log("Using fallback method to check application");
-      }
+      const response = await axios.get(
+        `${API_BASE_URL}/api/jobs/${id}/check-application/${user._id}`
+      );
       
-      // Fallback: Check local storage or job applications
+      if (response.data.success) {
+        setHasApplied(response.data.hasApplied);
+      }
+    } catch (error) {
+      console.log("Using fallback method to check application");
+      
+      // Fallback: Check local storage
       const appliedJobs = JSON.parse(localStorage.getItem('appliedJobs') || '[]');
       setHasApplied(appliedJobs.includes(id));
-      
-    } catch (error) {
-      console.error("Error checking application status:", error);
     }
   };
   
@@ -113,7 +237,7 @@ const JobDetails = () => {
         localStorage.setItem('savedJobs', JSON.stringify(savedJobs));
         setIsSaved(true);
         setMessage({ 
-          text: "✅ Job Save Sucessfully!", 
+          text: "✅ Job saved successfully!", 
           type: "success" 
         });
       } else {
@@ -122,7 +246,7 @@ const JobDetails = () => {
         localStorage.setItem('savedJobs', JSON.stringify(savedJobs));
         setIsSaved(false);
         setMessage({ 
-          text: "Job remove save list ", 
+          text: "Job removed from saved list", 
           type: "info" 
         });
       }
@@ -132,7 +256,7 @@ const JobDetails = () => {
     } catch (error) {
       console.error("Error saving job:", error);
       setMessage({ 
-        text: "Fail to Save job", 
+        text: "Failed to save job", 
         type: "error" 
       });
     } finally {
@@ -147,23 +271,30 @@ const JobDetails = () => {
       return;
     }
     
+    // Check if admin is applying to their own job
+    if (isAdminJob && isAdminAuthenticated) {
+      setMessage({ 
+        text: "You cannot apply to your own job posting", 
+        type: "warning" 
+      });
+      return;
+    }
+    
     if (hasApplied) {
       setMessage({ 
-        text: "Youe alreay apply for this job", 
+        text: "You have already applied for this job", 
         type: "warning" 
       });
       return;
     }
     
     setShowApplyModal(true);
-    // Prevent body scroll when modal is open
     document.body.style.overflow = 'hidden';
   };
   
   // Close modal function
   const closeModal = () => {
     setShowApplyModal(false);
-    // Restore body scroll
     document.body.style.overflow = 'auto';
   };
   
@@ -171,16 +302,26 @@ const JobDetails = () => {
   const submitApplication = async () => {
     if (!isAuthenticated || !user) {
       setMessage({ 
-        text: "Please Login first", 
+        text: "Please login first", 
         type: "error" 
       });
+      return;
+    }
+    
+    // Check if admin applying to own job
+    if (isAdminJob && isAdminAuthenticated) {
+      setMessage({ 
+        text: "You cannot apply to your own job posting", 
+        type: "warning" 
+      });
+      closeModal();
       return;
     }
     
     // Validate resume
     if (!application.resume.trim()) {
       setMessage({ 
-        text: "Please add you resume link", 
+        text: "Please add your resume link", 
         type: "error" 
       });
       return;
@@ -197,14 +338,15 @@ const JobDetails = () => {
         userEmail: user.email,
         userPhone: user.phone || "",
         resume: application.resume,
-        coverLetter: application.coverLetter || ""
+        coverLetter: application.coverLetter || "",
+        jobTitle: job.jobTitle,
+        companyName: job.companyName
       };
       
-      console.log("Submitting application with data:", applicationData);
+      console.log("📤 Submitting application:", applicationData);
       
-      // ✅ IMPORTANT: Use this API call to apply
       const response = await axios.post(
-        `https://project-job-i2vd.vercel.app/api/jobs/${id}/apply`,
+        `${API_BASE_URL}/api/jobs/${id}/apply`,
         applicationData,
         {
           headers: {
@@ -213,7 +355,7 @@ const JobDetails = () => {
         }
       );
       
-      console.log("Application response:", response.data);
+      console.log("✅ Application response:", response.data);
       
       if (response.data.success) {
         // Save to local storage
@@ -225,7 +367,7 @@ const JobDetails = () => {
         setHasApplied(true);
         closeModal();
         setMessage({ 
-          text: "✅ Application Submit Sucessfully!", 
+          text: "✅ Application submitted successfully!", 
           type: "success" 
         });
         
@@ -245,9 +387,9 @@ const JobDetails = () => {
       }
       
     } catch (error) {
-      console.error("Application error:", error);
+      console.error("❌ Application error:", error);
       
-      let errorMessage = "Fail to Submit Application";
+      let errorMessage = "Failed to submit application";
       
       if (error.response) {
         errorMessage = error.response.data.message || errorMessage;
@@ -256,9 +398,10 @@ const JobDetails = () => {
         if (error.response.data.message?.includes("already applied")) {
           setHasApplied(true);
           setMessage({ 
-            text: "Your already apply for this job", 
+            text: "You have already applied for this job", 
             type: "warning" 
           });
+          closeModal();
           return;
         }
       }
@@ -273,11 +416,47 @@ const JobDetails = () => {
     }
   };
   
+  // Admin actions
+  const handleEditJob = () => {
+    if (isAdminJob) {
+      navigate(`/admin/edit-job/${id}`);
+    }
+  };
+  
+  const handleDeleteJob = async () => {
+    if (!isAdminJob) return;
+    
+    if (window.confirm('Are you sure you want to delete this job? This action cannot be undone.')) {
+      try {
+        const response = await axios.delete(`${API_BASE_URL}/api/jobs/${id}`);
+        
+        if (response.data.success) {
+          setMessage({ 
+            text: "✅ Job deleted successfully!", 
+            type: "success" 
+          });
+          setTimeout(() => navigate('/admin/jobs'), 2000);
+        }
+      } catch (error) {
+        setMessage({ 
+          text: "Failed to delete job", 
+          type: "error" 
+        });
+      }
+    }
+  };
+  
+  const handleViewApplications = () => {
+    if (isAdminJob) {
+      navigate(`/admin/job/${id}/applications`);
+    }
+  };
+  
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', {
+      return date.toLocaleDateString('en-IN', {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
@@ -288,419 +467,439 @@ const JobDetails = () => {
   };
   
   const formatSalary = () => {
-    if (!job?.salaryRange) return "Negotiable";
-    return `${job.salaryRange} ${job.currency || ""}`.trim();
+    if (!job?.salaryRange && !job?.salary) return "Negotiable";
+    
+    if (job.salaryRange) {
+      return `${job.salaryRange} ${job.currency || ""}`.trim();
+    }
+    
+    return job.salary || "Negotiable";
   };
   
   if (loading) {
     return (
-      <div className="container py-5 text-center">
-        <div className="spinner-border text-primary" style={{ width: "3rem", height: "3rem" }} role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-        <p className="mt-3">Loading Job details...</p>
+      <div className="loading-container">
+        <div className="spinner"></div>
+        <p className="loading-text">Loading job details...</p>
       </div>
     );
   }
   
   if (!job) {
     return (
-      <div className="container py-5">
-        <div className="alert alert-danger">
-          <h4>Job not found</h4>
-          <p>The job you are looking for does not exist or has been removed.</p>
-          <button className="btn btn-primary" onClick={() => navigate("/jobs")}>
-            Browse Job
-          </button>
-        </div>
+      <div className="error-container">
+        <div className="error-icon">❌</div>
+        <h2>Job Not Found</h2>
+        <p>The job you are looking for does not exist or has been removed.</p>
+        <button className="btn-primary" onClick={() => navigate("/jobs")}>
+          Browse Jobs
+        </button>
       </div>
     );
   }
   
   return (
     <div className="job-details-page">
-      <div className="container py-4">
+      <div className="container">
         {/* Message Alert */}
         {message.text && (
-          <div className={`alert alert-${message.type === "success" ? "success" : 
-            message.type === "error" ? "danger" : 
-            message.type === "warning" ? "warning" : "info"} 
-            alert-dismissible fade show`}>
-            {message.text}
+          <div className={`alert alert-${message.type}`}>
+            <span>{message.text}</span>
             <button 
-              type="button" 
-              className="btn-close" 
+              className="alert-close"
               onClick={() => setMessage({ text: "", type: "" })}
-            ></button>
+            >
+              ×
+            </button>
           </div>
         )}
         
         {/* Breadcrumb */}
-        <nav aria-label="breadcrumb" className="mb-4">
-          <ol className="breadcrumb">
-            <li className="breadcrumb-item"><a href="/">Home</a></li>
-            <li className="breadcrumb-item"><a href="/jobs">Jobs</a></li>
-            <li className="breadcrumb-item active">{job.jobTitle}</li>
-          </ol>
-        </nav>
+        <div className="breadcrumb">
+          <a href="/">Home</a>
+          <span>/</span>
+          <a href="/jobs">Jobs</a>
+          <span>/</span>
+          <span>{job.jobTitle}</span>
+        </div>
         
         {/* Job Header */}
-        <div className="card shadow mb-4">
-          <div className="card-body">
-            <div className="row">
-              <div className="col-md-9">
-                <h1 className="h2 mb-2">{job.jobTitle}</h1>
-                <h2 className="h4 text-primary mb-3">{job.companyName}</h2>
-                
-                <div className="d-flex flex-wrap gap-2 mb-3">
-                  <span className="badge bg-primary">{job.jobType}</span>
-                  <span className="badge bg-info text-dark">{job.experienceLevel}</span>
-                  <span className="badge bg-secondary">{job.workLocation}</span>
-                  {job.isUrgent && <span className="badge bg-danger">Important </span>}
-                  {job.isFeatured && <span className="badge bg-warning text-dark">featured</span>}
-                </div>
-                
-                <div className="row">
-                  <div className="col-md-6">
-                    <p><strong>📍 Location:</strong> {job.location}</p>
-                    <p><strong>💰 Salary:</strong> {formatSalary()}</p>
-                  </div>
-                  <div className="col-md-6">
-                    <p><strong>📅 Post Date:</strong> {formatDate(job.postedDate)}</p>
-                    <p><strong>👁️ View:</strong> {job.views || 0}</p>
-                    <p><strong>📝 Application:</strong> {job.applications || 0}</p>
-                  </div>
-                </div>
+        <div className="job-header-card">
+          <div className="job-header-content">
+            <div className="job-title-section">
+              <div className="job-meta">
+                {job.isFeatured && <span className="badge featured">⭐ Featured</span>}
+                {job.isUrgent && <span className="badge urgent">🚨 Urgent</span>}
+                <span className="badge type">{job.jobType || 'Full-time'}</span>
+                <span className="badge experience">{job.experienceLevel || 'Not specified'}</span>
               </div>
-              
-              <div className="col-md-3 text-center">
+              <h1>{job.jobTitle}</h1>
+              <div className="company-info">
                 {job.companyLogo ? (
-                  <img 
-                    src={job.companyLogo} 
-                    alt={job.companyName}
-                    className="img-fluid mb-3"
-                    style={{ maxHeight: "80px" }}
-                  />
+                  <img src={job.companyLogo} alt={job.companyName} className="company-logo" />
                 ) : (
-                  <div className="mb-3 p-3 bg-light rounded">
-                    <div className="h1 text-muted">
-                      {job.companyName?.charAt(0) || 'C'}
-                    </div>
+                  <div className="company-logo-placeholder">
+                    {job.companyName?.charAt(0) || 'C'}
                   </div>
                 )}
-                
-                {/* Action Buttons */}
-                <div className="d-grid gap-2">
-                  {!isAuthenticated ? (
-                    <button 
-                      className="btn btn-primary"
-                      onClick={() => navigate("/login", { state: { from: `/jobs/${id}` } })}
-                    >
-                      Login now for Apply job
-                    </button>
-                  ) : hasApplied ? (
-                    <button className="btn btn-success" disabled>
-                      ✓ Application done
-                    </button>
-                  ) : (
-                    <button 
-                      className="btn btn-primary btn-lg"
-                      onClick={handleApplyNow}
-                    >
-                     Apply Now
-                    </button>
-                  )}
-                  
-                  <button 
-                    className={`btn ${isSaved ? 'btn-warning' : 'btn-outline-primary'}`}
-                    onClick={handleSaveJob}
-                    disabled={saving}
-                  >
-                    {saving ? (
-                      <span className="spinner-border spinner-border-sm"></span>
-                    ) : (
-                      <>
-                        {isSaved ? '✓ Already saved' : 'Save Job '}
-                      </>
-                    )}
-                  </button>
+                <div className="company-details">
+                  <h2>{job.companyName}</h2>
+                  <div className="company-meta">
+                    <span>📍 {job.location}</span>
+                    <span>💰 {formatSalary()}</span>
+                  </div>
                 </div>
               </div>
             </div>
+            
+            <div className="job-actions-section">
+              {/* Admin Controls */}
+              {isAdminJob && isAdminAuthenticated && (
+                <div className="admin-controls">
+                  <div className="admin-badge">
+                    <span>👑 Your Job Posting</span>
+                  </div>
+                  <div className="admin-actions">
+                    <button className="btn-admin-edit" onClick={handleEditJob}>
+                      ✏️ Edit Job
+                    </button>
+                    <button className="btn-admin-applications" onClick={handleViewApplications}>
+                      👥 View Applications ({job.applications || 0})
+                    </button>
+                    <button className="btn-admin-delete" onClick={handleDeleteJob}>
+                      🗑️ Delete Job
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              {/* User Actions */}
+              <div className="user-actions">
+                {!isAuthenticated ? (
+                  <button 
+                    className="btn-login-apply"
+                    onClick={() => navigate("/login", { state: { from: `/jobs/${id}` } })}
+                  >
+                    🔐 Login to Apply
+                  </button>
+                ) : hasApplied ? (
+                  <button className="btn-applied" disabled>
+                    ✅ Applied Successfully
+                  </button>
+                ) : isAdminJob ? (
+                  <button className="btn-own-job" disabled>
+                    👑 Your Job Posting
+                  </button>
+                ) : (
+                  <button 
+                    className="btn-apply-primary"
+                    onClick={handleApplyNow}
+                  >
+                    ⚡ Apply Now
+                  </button>
+                )}
+                
+                <button 
+                  className={`btn-save ${isSaved ? 'saved' : ''}`}
+                  onClick={handleSaveJob}
+                  disabled={saving}
+                >
+                  {saving ? '⏳' : (isSaved ? '💾 Saved' : '💾 Save Job')}
+                </button>
+                
+                <button 
+                  className="btn-share"
+                  onClick={() => {
+                    navigator.clipboard.writeText(window.location.href);
+                    setMessage({ text: "Link copied to clipboard!", type: "success" });
+                  }}
+                >
+                  📤 Share Job
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          {/* Job Stats */}
+          <div className="job-stats">
+            <div className="stat-item">
+              <div className="stat-icon">👁️</div>
+              <div className="stat-content">
+                <div className="stat-value">{job.views || 0}</div>
+                <div className="stat-label">Views</div>
+              </div>
+            </div>
+            <div className="stat-item">
+              <div className="stat-icon">📝</div>
+              <div className="stat-content">
+                <div className="stat-value">{job.applications || 0}</div>
+                <div className="stat-label">Applications</div>
+              </div>
+            </div>
+            <div className="stat-item">
+              <div className="stat-icon">📅</div>
+              <div className="stat-content">
+                <div className="stat-value">{formatDate(job.postedDate || job.createdAt)}</div>
+                <div className="stat-label">Posted Date</div>
+              </div>
+            </div>
+            {job.applicationDeadline && (
+              <div className="stat-item deadline">
+                <div className="stat-icon">⏰</div>
+                <div className="stat-content">
+                  <div className="stat-value">{formatDate(job.applicationDeadline)}</div>
+                  <div className="stat-label">Application Deadline</div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         
-        {/* Job Description */}
-        <div className="row">
-          <div className="col-lg-8">
-            <div className="card shadow mb-4">
-              <div className="card-header bg-light">
-                <h4 className="mb-0">Job description</h4>
-              </div>
-              <div className="card-body">
-                {job.jobDescription ? (
-                  <div dangerouslySetInnerHTML={{ __html: job.jobDescription.replace(/\n/g, '<br>') }} />
-                ) : (
-                  <p className="text-muted">No Job Description</p>
-                )}
+        {/* Job Content */}
+        <div className="job-content-grid">
+          <div className="job-main-content">
+            {/* Job Description */}
+            <div className="content-section">
+              <h3>📝 Job Description</h3>
+              <div className="section-content">
+                {renderContent(job.jobDescription)}
               </div>
             </div>
             
             {/* Requirements */}
-            {job.requirements && job.requirements.trim() && (
-              <div className="card shadow mb-4">
-                <div className="card-header bg-light">
-                  <h4 className="mb-0">Requirements</h4>
+            {job.requirements && (
+              <div className="content-section">
+                <h3>✅ Requirements</h3>
+                <div className="section-content">
+                  {renderContent(job.requirements)}
                 </div>
-                <div className="card-body">
-                  <div dangerouslySetInnerHTML={{ __html: job.requirements.replace(/\n/g, '<br>') }} />
+              </div>
+            )}
+            
+            {/* Responsibilities */}
+            {job.responsibilities && (
+              <div className="content-section">
+                <h3>🎯 Key Responsibilities</h3>
+                <div className="section-content">
+                  {renderContent(job.responsibilities)}
                 </div>
               </div>
             )}
           </div>
           
-          {/* Sidebar */}
-          <div className="col-lg-4">
-            <div className="card shadow mb-4">
-              <div className="card-header bg-light">
-                <h4 className="mb-0">Job Description</h4>
+          {/* Job Sidebar */}
+          <div className="job-sidebar">
+            <div className="sidebar-section">
+              <h3>📋 Job Details</h3>
+              <div className="details-list">
+                <div className="detail-item">
+                  <span className="detail-label">Job Type</span>
+                  <span className="detail-value">{job.jobType || 'Full-time'}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Experience Level</span>
+                  <span className="detail-value">{job.experienceLevel || 'Not specified'}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Work Location</span>
+                  <span className="detail-value">{job.workLocation || job.location || 'Not specified'}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Salary Package</span>
+                  <span className="detail-value">{formatSalary()}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Posted By</span>
+                  <span className="detail-value">{job.postedBy || 'Company'}</span>
+                </div>
+                {job.vacancies && (
+                  <div className="detail-item">
+                    <span className="detail-label">Vacancies</span>
+                    <span className="detail-value">{job.vacancies}</span>
+                  </div>
+                )}
               </div>
-              <div className="card-body">
-                <ul className="list-unstyled">
-                  <li className="mb-2"><strong>Job Type:</strong> {job.jobType}</li>
-                  <li className="mb-2"><strong>Experience:</strong> {job.experienceLevel}</li>
-                  <li className="mb-2"><strong>Location:</strong> {job.location}</li>
-                  <li className="mb-2"><strong>Type Of Work:</strong> {job.workLocation}</li>
-                  <li className="mb-2"><strong>Salary:</strong> {formatSalary()}</li>
-                  {job.applicationDeadline && (
-                    <li className="mb-2"><strong>Last Date:</strong> {formatDate(job.applicationDeadline)}</li>
+            </div>
+            
+            {/* Skills */}
+            {(job.skills || job.requiredSkills) && (
+              <div className="sidebar-section">
+                <h3>🛠️ Required Skills</h3>
+                <div className="skills-tags">
+                  {renderSkills(job.skills)}
+                  {renderSkills(job.requiredSkills)}
+                </div>
+              </div>
+            )}
+            
+            {/* Benefits */}
+            {job.benefits && (
+              <div className="sidebar-section">
+                <h3>🎁 Benefits & Perks</h3>
+                <div className="benefits-list">
+                  {renderContent(job.benefits)}
+                </div>
+              </div>
+            )}
+            
+            {/* Company Info */}
+            <div className="sidebar-section company-info-sidebar">
+              <h3>🏢 About Company</h3>
+              <div className="company-description">
+                <p><strong>{job.companyName}</strong></p>
+                {job.companyDescription ? (
+                  <p>{renderContent(job.companyDescription)}</p>
+                ) : (
+                  <p>No company description available.</p>
+                )}
+                <div className="company-contact">
+                  <p><strong>📍 Location:</strong> {job.location}</p>
+                  {job.companyWebsite && (
+                    <p>
+                      <strong>🌐 Website:</strong> 
+                      <a href={job.companyWebsite} target="_blank" rel="noopener noreferrer">
+                        {job.companyWebsite}
+                      </a>
+                    </p>
                   )}
-                </ul>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
       
-      {/* Apply Modal */}
+      {/* Apply Modal (એ જ રહે છે, કોઈ ફેરફાર નહીં) */}
       {showApplyModal && (
-        <>
-          <div 
-            className="modal-backdrop fade show" 
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              width: '100vw',
-              height: '100vh',
-              backgroundColor: 'rgba(0, 0, 0, 0.5)',
-              zIndex: 1040
-            }}
-            onClick={closeModal}
-          ></div>
-          
-          <div 
-            className="modal fade show d-block" 
-            tabIndex="-1"
-            style={{
-              position: 'fixed',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              zIndex: 1050,
-              width: '100%',
-              maxWidth: '800px',
-              outline: 0
-            }}
-          >
-            <div className="modal-dialog modal-lg modal-dialog-centered">
-              <div className="modal-content">
-                <div className="modal-header bg-primary text-white">
-                  <h5 className="modal-title">
-                    Apply For This: {job.jobTitle}
-                  </h5>
-                  <button 
-                    type="button" 
-                    className="btn-close btn-close-white"
-                    onClick={closeModal}
-                    disabled={applying}
-                  ></button>
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Apply for: {job.jobTitle}</h2>
+              <button className="modal-close" onClick={closeModal} disabled={applying}>
+                ×
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              <div className="application-info">
+                <div className="info-card">
+                  <h4>📋 Application Information</h4>
+                  <p>Your profile information will be sent with your application.</p>
                 </div>
-                
-                <div className="modal-body">
-                  {/* Application Info */}
-                  <div className="alert alert-info mb-4">
-                    <h6 className="mb-1">📋 Application Information</h6>
-                    <p className="mb-0">Your profile Information send will your application.</p>
-                  </div>
-                  
-                  {/* User Information */}
-                  <div className="card mb-4">
-                    <div className="card-header">
-                      <h6 className="mb-0">👤 Your information</h6>
-                    </div>
-                    <div className="card-body">
-                      <div className="row">
-                        <div className="col-md-6 mb-3">
-                          <label className="form-label text-muted small">Name</label>
-                          <div className="form-control bg-light">
-                            {user?.firstName && user?.lastName 
-                              ? `${user.firstName} ${user.lastName}`
-                              : user?.name || user?.email?.split('@')[0]}
-                          </div>
-                        </div>
-                        <div className="col-md-6 mb-3">
-                          <label className="form-label text-muted small">Email</label>
-                          <div className="form-control bg-light">
-                            {user?.email}
-                          </div>
-                        </div>
-                        <div className="col-md-6 mb-3">
-                          <label className="form-label text-muted small">Phone no</label>
-                          <div className="form-control bg-light">
-                            {user?.phone || "પ્રદાન કરેલ નથી"}
-                          </div>
-                        </div>
-                        <div className="col-md-6 mb-3">
-                          <label className="form-label text-muted small">Resume Status</label>
-                          <div className={`form-control ${user?.resume ? 'bg-success-light text-success' : 'bg-danger-light text-danger'}`}>
-                            {user?.resume ? (
-                              <>
-                                <i className="bi bi-check-circle me-1"></i>
-                                Uploaded
-                              </>
-                            ) : (
-                              <>
-                                <i className="bi bi-exclamation-circle me-1"></i>
-                                Not Uploaded
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {!user?.resume && (
-                        <div className="alert alert-warning mt-2">
-                          <small>
-                            <i className="bi bi-exclamation-triangle me-1"></i>
-                            Please Upload Your Resume To Your Profile Before Applying.
-                            <a href="/profile" className="alert-link ms-1">Go To Profile</a>
-                          </small>
-                        </div>
-                      )}
+              </div>
+              
+              <div className="user-info-card">
+                <h4>👤 Your Information</h4>
+                <div className="user-info-grid">
+                  <div className="info-field">
+                    <label>Full Name</label>
+                    <div className="info-value">
+                      {user?.firstName && user?.lastName 
+                        ? `${user.firstName} ${user.lastName}`
+                        : user?.name || user?.email?.split('@')[0]}
                     </div>
                   </div>
-                  
-                  {/* Resume Link Input */}
-                  <div className="mb-4">
-                    <label className="form-label fw-bold">
-                      📄 Your Resume Link *
-                    </label>
-                    <input
-                      type="url"
-                      className="form-control"
-                      placeholder="https://drive.google.com/... Or https://example.com/resume.pdf"
-                      value={application.resume}
-                      onChange={(e) => setApplication({...application, resume: e.target.value})}
-                      disabled={!!user?.resume}
-                      required
-                    />
-                    <div className="form-text text-muted">
-                      {user?.resume 
-                        ? "Using Resume from Your Prfile"
-                        : "Upload your resume to Google Drive, Dropbox, or any cloud storage and share the link"}
-                    </div>
+                  <div className="info-field">
+                    <label>Email Address</label>
+                    <div className="info-value">{user?.email}</div>
                   </div>
-                  
-                  {/* Cover Letter */}
-                  <div className="mb-4">
-                    <label className="form-label fw-bold">
-                      ✍️ Cover Letter (Optional)
-                    </label>
-                    <textarea
-                      className="form-control"
-                      rows={6}
-                      placeholder="Why are you interested in this position? Why are you a good fit? Include any relevant experience or skills..."
-                      value={application.coverLetter}
-                      onChange={(e) => setApplication({...application, coverLetter: e.target.value})}
-                    />
-                    <div className="form-text text-muted">
-                      <i className="bi bi-lightbulb me-1"></i>
-                      A good cover letter increases your chances of being selected.
-                    </div>
+                  <div className="info-field">
+                    <label>Phone Number</label>
+                    <div className="info-value">{user?.phone || 'Not provided'}</div>
                   </div>
-                  
-                  {/* Job Summary */}
-                  <div className="card">
-                    <div className="card-header">
-                      <h6 className="mb-0">📋 Job Description</h6>
-                    </div>
-                    <div className="card-body">
-                      <p><strong>JOb:</strong> {job.jobTitle}</p>
-                      <p><strong>Company:</strong> {job.companyName}</p>
-                      <p><strong>Location:</strong> {job.location}</p>
-                      <p><strong>Salary:</strong> {formatSalary()}</p>
+                  <div className="info-field">
+                    <label>Resume Status</label>
+                    <div className={`info-value ${user?.resume ? 'success' : 'error'}`}>
+                      {user?.resume ? '✅ Uploaded' : '❌ Not Uploaded'}
                     </div>
                   </div>
                 </div>
                 
-                <div className="modal-footer">
-                  <button 
-                    type="button" 
-                    className="btn btn-secondary"
-                    onClick={closeModal}
-                    disabled={applying}
-                  >
-                   cancel
-                  </button>
-                  <button 
-                    type="button" 
-                    className="btn btn-primary"
-                    onClick={submitApplication}
-                    disabled={applying || !application.resume.trim()}
-                  >
-                    {applying ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm me-2"></span>
-                        Submitting...
-                      </>
-                    ) : (
-                      <>
-                        <i className="bi bi-send me-2"></i>
-                        Submit Application
-                      </>
-                    )}
-                  </button>
+                {!user?.resume && (
+                  <div className="resume-warning">
+                    <p>⚠️ Please upload your resume to your profile before applying.</p>
+                    <a href="/profile" className="profile-link">Go to Profile</a>
+                  </div>
+                )}
+              </div>
+              
+              <div className="resume-input-section">
+                <label>📄 Resume Link *</label>
+                <input
+                  type="url"
+                  className="resume-input"
+                  placeholder="https://drive.google.com/... or https://example.com/resume.pdf"
+                  value={application.resume}
+                  onChange={(e) => setApplication({...application, resume: e.target.value})}
+                  disabled={!!user?.resume}
+                  required
+                />
+                <p className="input-help">
+                  {user?.resume 
+                    ? "Using resume from your profile"
+                    : "Upload your resume to Google Drive, Dropbox, or any cloud storage"}
+                </p>
+              </div>
+              
+              <div className="cover-letter-section">
+                <label>✍️ Cover Letter (Optional)</label>
+                <textarea
+                  className="cover-letter-input"
+                  placeholder="Why are you interested in this position? Why are you a good fit? Include any relevant experience or skills..."
+                  value={application.coverLetter}
+                  onChange={(e) => setApplication({...application, coverLetter: e.target.value})}
+                  rows={5}
+                />
+                <p className="input-help">
+                  💡 A good cover letter increases your chances of being selected.
+                </p>
+              </div>
+              
+              <div className="job-summary-card">
+                <h4>📋 Job Summary</h4>
+                <div className="summary-grid">
+                  <div className="summary-item">
+                    <span>Position:</span>
+                    <strong>{job.jobTitle}</strong>
+                  </div>
+                  <div className="summary-item">
+                    <span>Company:</span>
+                    <strong>{job.companyName}</strong>
+                  </div>
+                  <div className="summary-item">
+                    <span>Location:</span>
+                    <strong>{job.location}</strong>
+                  </div>
+                  <div className="summary-item">
+                    <span>Salary:</span>
+                    <strong>{formatSalary()}</strong>
+                  </div>
                 </div>
               </div>
             </div>
+            
+            <div className="modal-footer">
+              <button className="btn-cancel" onClick={closeModal} disabled={applying}>
+                Cancel
+              </button>
+              <button 
+                className="btn-submit" 
+                onClick={submitApplication}
+                disabled={applying || !application.resume.trim()}
+              >
+                {applying ? (
+                  <>
+                    <span className="spinner"></span>
+                    Submitting...
+                  </>
+                ) : (
+                  'Submit Application'
+                )}
+              </button>
+            </div>
           </div>
-        </>
+        </div>
       )}
-      
-      {/* Custom CSS */}
-      <style jsx>{`
-        .modal-backdrop.show {
-          opacity: 0.5;
-        }
-        .bg-success-light {
-          background-color: #d1f7c4 !important;
-        }
-        .bg-danger-light {
-          background-color: #ffe6e6 !important;
-        }
-        .form-control[disabled] {
-          background-color: #f8f9fa !important;
-          cursor: not-allowed !important;
-        }
-        .modal {
-          z-index: 1055 !important;
-        }
-        .modal-content {
-          max-height: 90vh;
-          overflow-y: auto;
-        }
-      `}</style>
     </div>
   );
 };

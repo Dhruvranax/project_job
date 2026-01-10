@@ -1,75 +1,90 @@
-// JobCard.jsx - Full Code with Production API URL
-import React, { useState } from 'react';
+import React, { useState, useCallback, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import './JobCard.css';
 
-const JobCard = ({ job, onApplySuccess }) => {
+const JobCard = memo(({ job, onApplySuccess, showActions = true }) => {
   const { user, isAuthenticated } = useAuth();
   const [applying, setApplying] = useState(false);
   const [applyError, setApplyError] = useState('');
   const [applySuccess, setApplySuccess] = useState('');
 
-  if (!job) {
-    return (
-      <div className="job-card">
-        <div className="card h-100 shadow-sm">
-          <div className="card-body text-center">
-            <p className="text-muted">No job data available</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // ============================================
+  // DYNAMIC API URL
+  // ============================================
+  const API_BASE_URL = window.location.hostname.includes('localhost') 
+    ? "http://localhost:5000" 
+    : "https://project-job-i2vd.vercel.app";
 
-  // Format date
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Recently';
-    
+  // ============================================
+  // MEMOIZED HELPER FUNCTIONS
+  // ============================================
+  const formatDate = useCallback((dateString) => {
+    if (!dateString) return 'Today';
     try {
       const date = new Date(dateString);
       const now = new Date();
       const diffTime = Math.abs(now - date);
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
       
-      if (diffDays === 0) return '  ';
+      if (diffDays === 0) return 'Today';
       if (diffDays === 1) return 'Yesterday';
       if (diffDays < 7) return `${diffDays} days ago`;
       if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-      
-      return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: diffDays < 365 ? undefined : 'numeric'
-      });
+      return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
     } catch (error) {
-      return 'Recently';
+      return 'Today';
     }
-  };
+  }, []);
 
-  // Get job description
-  const getJobDescription = () => {
-    if (!job.jobDescription) {
-      return 'No description available';
+  const getJobTitle = useCallback(() => job?.jobTitle || 'Job Title', [job?.jobTitle]);
+  const getCompanyName = useCallback(() => job?.companyName || 'Company', [job?.companyName]);
+  const getJobType = useCallback(() => job?.jobType || 'Full-time', [job?.jobType]);
+  const getLocation = useCallback(() => job?.location || 'Remote', [job?.location]);
+  const getExperienceLevel = useCallback(() => job?.experienceLevel || 'Not specified', [job?.experienceLevel]);
+  
+  const getSalary = useCallback(() => {
+    const salary = job?.salaryRange || job?.salary;
+    if (!salary) return '₹ Negotiable';
+    
+    // Format salary
+    let formatted = salary.toString();
+    if (!formatted.includes('₹')) {
+      formatted = `₹${formatted}`;
     }
-    
-    const plainText = job.jobDescription.replace(/<[^>]*>/g, '');
-    return plainText.length > 120 ? plainText.substring(0, 120) + '...' : plainText;
-  };
+    return formatted;
+  }, [job?.salaryRange, job?.salary]);
 
-  // Check if user has applied - IMPROVED
-  const hasApplied = user && job.jobApplications?.some(
-    app => app.userId && app.userId.toString() === user._id.toString()
-  );
+  const getSkills = useCallback(() => {
+    if (!job?.skills) return '';
+    if (Array.isArray(job.skills)) return job.skills.join(', ');
+    return job.skills;
+  }, [job?.skills]);
 
-  // Handle apply button click - COMPLETELY FIXED with Production URL
-  const handleApply = async () => {
-    console.log("Apply button clicked for job:", job._id);
-    console.log("User:", user);
-    
+  // Check if user has applied
+  const hasApplied = useCallback(() => {
+    if (!user || !job?.jobApplications) return false;
+    return job.jobApplications.some(
+      app => app.userId && app.userId.toString() === user._id.toString()
+    );
+  }, [user, job?.jobApplications]);
+
+  // ============================================
+  // EVENT HANDLERS
+  // ============================================
+  const handleClearError = useCallback(() => setApplyError(''), []);
+  const handleClearSuccess = useCallback(() => setApplySuccess(''), []);
+
+  // Apply function
+  const handleApply = useCallback(async () => {
     if (!isAuthenticated || !user) {
-      setApplyError('Please login to apply for this job');
+      setApplyError('Please login to apply');
+      return;
+    }
+
+    if (hasApplied()) {
+      setApplyError('You have already applied for this job');
       return;
     }
 
@@ -78,284 +93,243 @@ const JobCard = ({ job, onApplySuccess }) => {
     setApplySuccess('');
 
     try {
-      // Check if resume is available
-      if (!user.resume) {
-        setApplyError('Please upload your resume in profile before applying');
-        setApplying(false);
+      if (!job?._id) {
+        setApplyError('Invalid job data');
         return;
       }
 
-      // Prepare application data - Complete data
+      if (!user.resume) {
+        setApplyError('Please upload your resume first');
+        return;
+      }
+
       const applicationData = {
         userId: user._id,
-        userName: `${user.firstName} ${user.lastName}`,
-        userEmail: user.email,
+        userName: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+        userEmail: user.email || '',
         userPhone: user.phone || '',
         resume: user.resume,
-        coverLetter: ''
+        jobTitle: getJobTitle(),
+        companyName: getCompanyName(),
+        jobType: getJobType(),
+        location: getLocation(),
+        salary: getSalary(),
+        jobId: job._id
       };
 
-      console.log('Sending application data:', applicationData);
-      console.log('Job ID:', job._id);
-
-      // ✅ PRODUCTION API URL - FIXED FOR MOBILE
       const response = await axios.post(
-        `https://project-job-i2vd.vercel.app/api/jobs/${job._id}/apply`,
+        `${API_BASE_URL}/api/jobs/${job._id}/apply`,
         applicationData,
-        {
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        }
+        { headers: { 'Content-Type': 'application/json' }, timeout: 10000 }
       );
-
-      console.log('Application response:', response.data);
 
       if (response.data.success) {
         setApplySuccess('Application submitted successfully!');
         
-        // Create the new application object
-        const newApplication = {
-          userId: user._id,
-          userEmail: user.email,
-          userName: `${user.firstName} ${user.lastName}`,
-          userPhone: user.phone || '',
-          resume: user.resume,
-          coverLetter: '',
-          status: "Pending",
-          appliedAt: new Date().toISOString()
-        };
-        
-        // Call parent callback if provided
         if (onApplySuccess) {
+          const newApplication = {
+            userId: user._id,
+            userName: `${user.firstName} ${user.lastName}`,
+            userEmail: user.email,
+            status: "Pending",
+            appliedAt: new Date().toISOString()
+          };
           onApplySuccess(job._id, newApplication);
         }
         
-        // Refresh after success
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
+        setTimeout(() => setApplySuccess(''), 3000);
       } else {
         setApplyError(response.data.message || 'Failed to submit application');
       }
     } catch (error) {
-      console.error('Detailed apply error:', error);
-      
-      if (error.response) {
-        // The request was made and the server responded with a status code
-        // that falls out of the range of 2xx
-        console.error('Response error:', error.response.data);
-        console.error('Response status:', error.response.status);
-        
-        const errorMessage = error.response.data?.message || 
-                            error.response.data?.error || 
-                            'Error submitting application';
-        setApplyError(errorMessage);
-        
-        // If already applied error
-        if (error.response.data?.message?.includes('already applied')) {
-          // Update UI to show already applied
-          window.location.reload();
-        }
-      } else if (error.request) {
-        // The request was made but no response was received
-        console.error('No response received:', error.request);
-        setApplyError('No response from server. Please check your connection.');
+      console.error('Apply error:', error);
+      if (error.code === 'ERR_NETWORK') {
+        setApplyError('Network error. Please check your connection.');
+      } else if (error.response?.status === 409) {
+        setApplyError('You have already applied for this job');
       } else {
-        // Something happened in setting up the request
-        console.error('Request setup error:', error.message);
-        setApplyError('Error: ' + error.message);
+        setApplyError(error.response?.data?.message || 'Failed to apply');
       }
     } finally {
       setApplying(false);
     }
-  };
+  }, [job, user, isAuthenticated, API_BASE_URL, onApplySuccess, getJobTitle, getCompanyName, getJobType, getLocation, getSalary, hasApplied]);
 
-  // Get job title
-  const getJobTitle = () => {
-    return job.jobTitle || 'Untitled Job';
-  };
+  // ============================================
+  // RENDER
+  // ============================================
+  if (!job) return null;
 
-  // Get company name
-  const getCompanyName = () => {
-    return job.companyName || 'Unknown Company';
-  };
-
-  // Get job type
-  const getJobType = () => {
-    return job.jobType || 'Not specified';
-  };
-
-  // Get location
-  const getLocation = () => {
-    return job.location || 'Location not specified';
-  };
-
-  // Get salary range
-  const getSalaryRange = () => {
-    return job.salaryRange || 'Salary negotiable';
-  };
-
-  // Get views count
-  const getViews = () => {
-    return job.views || 0;
-  };
-
-  // Get applications count
-  const getApplications = () => {
-    return job.applications || 0;
-  };
+  const jobTitle = getJobTitle();
+  const companyName = getCompanyName();
+  const jobType = getJobType();
+  const location = getLocation();
+  const experienceLevel = getExperienceLevel();
+  const salary = getSalary();
+  const skills = getSkills();
+  const postedDate = formatDate(job.postedDate || job.createdAt);
+  const appliedStatus = hasApplied();
+  const views = job.views || 0;
+  const applications = job.applications || 0;
 
   return (
-    <div className="job-card">
-      <div className="card h-100 shadow-sm">
+    <div className="job-card-final">
+      <div className="card h-100">
         <div className="card-body">
-          <div className="d-flex justify-content-between align-items-start mb-3">
-            <div>
-              <h5 className="card-title mb-1">
-                <Link to={`/jobs/${job._id}`} className="text-decoration-none text-dark">
-                  {getJobTitle()}
-                </Link>
-              </h5>
-              <h6 className="card-subtitle text-primary">
-                {getCompanyName()}
-              </h6>
-            </div>
-            {job.companyLogo && (
-              <div className="company-logo">
-                <img 
-                  src={job.companyLogo} 
-                  alt={getCompanyName()}
-                  className="img-fluid"
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                    e.target.parentElement.innerHTML = `
-                      <div class="logo-placeholder">
-                        ${getCompanyName().charAt(0)}
-                      </div>
-                    `;
-                  }}
-                />
-              </div>
-            )}
+          {/* Job Title & Company - Top Section */}
+          <div className="job-header mb-3">
+            <h5 className="job-title mb-1">{jobTitle}</h5>
+            <p className="company-name mb-0">{companyName}</p>
           </div>
-          
-          <div className="job-meta mb-3">
-            <span className="badge bg-light text-dark me-2">
-              <i className="bi bi-briefcase me-1"></i>
-              {getJobType()}
-            </span>
-            <span className="badge bg-light text-dark me-2">
-              <i className="bi bi-geo-alt me-1"></i>
-              {getLocation()}
-            </span>
-            {job.experienceLevel && (
-              <span className="badge bg-light text-dark">
-                <i className="bi bi-person-badge me-1"></i>
-                {job.experienceLevel}
-              </span>
-            )}
-          </div>
-          
-          <div className="salary mb-3">
-            <strong className="text-success">
-              <i className="bi bi-cash me-1"></i>
-              {getSalaryRange()} {job.currency ? `(${job.currency})` : ''}
-            </strong>
-          </div>
-          
-          <div className="job-description mb-3">
-            <p className="text-muted small">
-              {getJobDescription()}
-            </p>
-          </div>
-          
-          <div className="job-stats d-flex justify-content-between text-muted small mb-3">
-            <div>
-              <i className="bi bi-eye me-1"></i>
-              {getViews()} views
-            </div>
-            <div>
-              <i className="bi bi-people me-1"></i>
-              {getApplications()} applicants
-            </div>
-            <div>
-              <i className="bi bi-clock me-1"></i>
-              {formatDate(job.postedDate || job.createdAt)}
+
+          {/* Job Type, Location, Experience - Tags */}
+          <div className="job-tags-row mb-3">
+            <div className="d-flex flex-wrap gap-2">
+              <span className="tag job-type-tag">{jobType}</span>
+              <span className="tag location-tag">{location}</span>
+              <span className="tag experience-tag">{experienceLevel}</span>
             </div>
           </div>
-          
-          {/* Alerts */}
-          {applyError && (
+
+          {/* Salary Display with Pin Icon */}
+          <div className="salary-row mb-3">
+            <div className="salary-container">
+              <span className="pin-icon">📌</span>
+              <span className="salary-text">{salary}</span>
+            </div>
+          </div>
+
+          {/* Skills/Description */}
+          <div className="skills-row mb-3">
+            <div className="skills-container">
+              <span className="skills-text">{skills || jobTitle}</span>
+            </div>
+          </div>
+
+          {/* Posted Date */}
+          <div className="date-row mb-3">
+            <span className="date-badge">{postedDate}</span>
+          </div>
+
+          {/* Views Stats */}
+          <div className="stats-row mb-4">
+            <div className="views-count">
+              <span className="eye-icon">👁️</span>
+              <span className="views-text">{views} views</span>
+            </div>
+          </div>
+
+          {/* Alerts for Apply Status */}
+          {showActions && applyError && (
             <div className="alert alert-danger alert-dismissible fade show mb-3" role="alert">
-              <small>{applyError}</small>
+              <div className="d-flex align-items-center">
+                <i className="bi bi-exclamation-triangle-fill me-2"></i>
+                <div className="flex-grow-1">{applyError}</div>
+              </div>
               <button 
                 type="button" 
                 className="btn-close" 
-                onClick={() => setApplyError('')}
+                onClick={handleClearError}
               ></button>
             </div>
           )}
           
-          {applySuccess && (
+          {showActions && applySuccess && (
             <div className="alert alert-success alert-dismissible fade show mb-3" role="alert">
-              <small>{applySuccess}</small>
+              <div className="d-flex align-items-center">
+                <i className="bi bi-check-circle-fill me-2"></i>
+                <div className="flex-grow-1">{applySuccess}</div>
+              </div>
               <button 
                 type="button" 
                 className="btn-close" 
-                onClick={() => setApplySuccess('')}
+                onClick={handleClearSuccess}
               ></button>
             </div>
           )}
-          
-          <div className="d-flex justify-content-between align-items-center">
-            <Link to={`/jobs/${job._id}`} className="btn btn-outline-primary btn-sm">
-              View Details
-            </Link>
-            
-            {isAuthenticated ? (
-              hasApplied ? (
-                <span className="badge bg-success">
-                  <i className="bi bi-check-circle me-1"></i>
-                  Applied
-                </span>
-              ) : (
-                <button 
-                  className="btn btn-primary btn-sm"
-                  onClick={handleApply}
-                  disabled={applying}
+
+          {/* ACTIONS BUTTONS SECTION */}
+          <div className="actions-buttons">
+            {showActions ? (
+              /* JobList Page - Show both buttons */
+              <div className="d-flex gap-3">
+                {/* Details Button - Left Side */}
+                <Link 
+                  to={`/jobs/${job._id}`} 
+                  className="btn btn-details-final flex-fill"
                 >
-                  {applying ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm me-2" role="status"></span>
-                      Applying...
-                    </>
+                  <i className="bi bi-info-circle me-2"></i>
+                  Details
+                </Link>
+                
+                {/* Apply Button - Right Side */}
+                <div className="flex-fill">
+                  {isAuthenticated ? (
+                    appliedStatus ? (
+                      <button className="btn btn-applied-final w-100" disabled>
+                        <i className="bi bi-check-circle me-2"></i>
+                        Applied
+                      </button>
+                    ) : (
+                      <button 
+                        className="btn btn-apply-final w-100"
+                        onClick={handleApply}
+                        disabled={applying}
+                      >
+                        {applying ? (
+                          <>
+                            <span className="spinner-border spinner-border-sm me-2"></span>
+                            Applying...
+                          </>
+                        ) : (
+                          <>
+                            <i className="bi bi-send me-2"></i>
+                            Apply Now
+                          </>
+                        )}
+                      </button>
+                    )
                   ) : (
-                    'Apply Now'
+                    <Link 
+                      to="/login" 
+                      className="btn btn-apply-final w-100"
+                    >
+                      <i className="bi bi-box-arrow-in-right me-2"></i>
+                      Login to Apply
+                    </Link>
                   )}
-                </button>
-              )
+                </div>
+              </div>
             ) : (
-              <Link to="/login" className="btn btn-primary btn-sm">
-                Login to Apply
+              /* Home Page - Single View Details Button */
+              <Link 
+                to={`/jobs/${job._id}`} 
+                className="btn btn-view-details w-100"
+              >
+                <i className="bi bi-eye me-2"></i>
+                View Details
               </Link>
             )}
-            
-            {(job.isUrgent || job.isFeatured) && (
-              <div>
-                {job.isUrgent && (
-                  <span className="badge bg-danger me-1">Urgent</span>
-                )}
-                {job.isFeatured && (
-                  <span className="badge bg-warning">Featured</span>
-                )}
-              </div>
-            )}
+          </div>
+
+          {/* Urgent/Featured Badges */}
+          <div className="status-badges-final">
+            {job.isUrgent && <span className="badge badge-urgent-final">🔥 Urgent</span>}
+            {job.isFeatured && <span className="badge badge-featured-final">⭐ Featured</span>}
           </div>
         </div>
       </div>
     </div>
   );
+});
+
+JobCard.displayName = 'JobCard';
+
+const areEqual = (prevProps, nextProps) => {
+  if (prevProps.job?._id !== nextProps.job?._id) return false;
+  if (prevProps.job?.applications !== nextProps.job?.applications) return false;
+  if (prevProps.showActions !== nextProps.showActions) return false;
+  return true;
 };
 
-export default JobCard;
+export default React.memo(JobCard, areEqual);

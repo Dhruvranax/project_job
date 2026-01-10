@@ -1,15 +1,15 @@
-.register-page {
+.login-page {
   min-height: 100vh;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 2rem 0;
 }
 
-.register-page .card {
+.login-page .card {
   border-radius: 15px;
   border: none;
 }
 
-.register-page .card-body {
+.login-page .card-body {
   border-radius: 15px;
 }
 
@@ -30,34 +30,46 @@
   padding: 0 10px;
 }
 
-.register-page .btn-primary {
+.login-page .btn-primary {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border: none;
   font-weight: 600;
 }
 
-.register-page .btn-outline-primary {
+.login-page .btn-outline-primary {
   border-width: 2px;
   font-weight: 600;
 }
 
-.register-page .form-control-lg {
+.login-page .form-control-lg {
   border-radius: 10px;
   border: 2px solid #e0e0e0;
   padding: 0.75rem 1rem;
 }
 
-.register-page .form-control-lg:focus {
+.login-page .form-control-lg:focus {
   border-color: #667eea;
   box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25);
 }
 
+.login-page .input-group-text {
+  background-color: #f8f9fa;
+  border: 2px solid #e0e0e0;
+  border-right: none;
+  border-radius: 10px 0 0 10px;
+}
+
+.login-page .input-group .form-control {
+  border-left: none;
+  border-radius: 0 10px 10px 0;
+}
+
 @media (max-width: 768px) {
-  .register-page {
+  .login-page {
     padding: 1rem;
   }
   
-  .register-page .card-body {
+  .login-page .card-body {
     padding: 2rem !important;
   }
 }

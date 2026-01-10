@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import JobCard from "../components/JobCard";
@@ -22,6 +22,13 @@ const JobList = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
 
+  // ============================================
+  // DYNAMIC API URL - LOCALHOST OR PRODUCTION
+  // ============================================
+  const API_BASE_URL = window.location.hostname.includes('localhost') 
+    ? "http://localhost:5000" 
+    : "https://project-job-i2vd.vercel.app";
+
   // URL parameters
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
@@ -38,14 +45,14 @@ const JobList = () => {
   // Fetch jobs
   useEffect(() => {
     fetchJobs();
-  }, [filters]);
+  }, []); // Empty dependency - fetch only once on mount
 
   const fetchJobs = async () => {
     try {
       setLoading(true);
       setError("");
       
-      console.log("Fetching jobs with filters:", filters);
+      console.log("📡 Fetching jobs from:", API_BASE_URL);
       
       const params = {};
       if (filters.search) params.search = filters.search;
@@ -53,9 +60,16 @@ const JobList = () => {
       if (filters.location) params.location = filters.location;
       if (filters.experienceLevel) params.experienceLevel = filters.experienceLevel;
       
-      const response = await axios.get("https://project-job-i2vd.vercel.app/api/jobs", { params });
+      // ✅ USE DYNAMIC API URL
+      const response = await axios.get(`${API_BASE_URL}/api/jobs`, { 
+        params,
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
       
-      console.log("Jobs API response:", response.data);
+      console.log("✅ Jobs API response:", response.data);
       
       if (response.data.success) {
         let filteredJobs = response.data.jobs || [];
@@ -65,36 +79,169 @@ const JobList = () => {
           job.status === "Active" || job.status === "Published"
         );
         
-        console.log(`Filtered ${filteredJobs.length} active jobs`);
+        console.log(`✅ Found ${filteredJobs.length} active jobs`);
         setJobs(filteredJobs);
-      } 
-      // else {
-      //   setError("Failed to load jobs");
-      // }
+      } else {
+        console.log("⚠️ No active jobs endpoint, using sample data");
+        // Use sample data if endpoint not available
+        setJobs(getSampleJobs());
+        setError("Using sample data. Backend jobs endpoint not configured.");
+      }
     } catch (err) {
-      console.error("Error fetching jobs:", err);
-      setError("Failed to load jobs. Please try again later.");
-      setJobs([]);
+      console.error("❌ Error fetching jobs:", err.message);
+      
+      if (err.code === 'ERR_NETWORK') {
+        setError(
+          <div>
+            <strong>🌐 Connection Error!</strong><br/>
+            <small className="text-muted">
+              Cannot connect to backend at: {API_BASE_URL}<br/>
+              Please make sure backend server is running.
+            </small>
+            <div className="mt-2">
+              <button 
+                className="btn btn-sm btn-outline-warning"
+                onClick={() => window.open(API_BASE_URL, '_blank')}
+              >
+                Test Backend
+              </button>
+              <button 
+                className="btn btn-sm btn-outline-primary ms-2"
+                onClick={() => window.location.reload()}
+              >
+                Refresh Page
+              </button>
+            </div>
+          </div>
+        );
+      } else if (err.response?.status === 404) {
+        console.log("⚠️ /api/jobs endpoint not found, using sample data");
+        setJobs(getSampleJobs());
+        setError(
+          <div>
+            <strong>🔧 Using Sample Data</strong><br/>
+            <small className="text-muted">
+              Backend endpoint /api/jobs not configured.<br/>
+              Displaying sample job listings for demo.
+            </small>
+          </div>
+        );
+      } else {
+        setError("Failed to load jobs. Please try again later.");
+      }
+      
+      // Fallback to sample data
+      setJobs(getSampleJobs());
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle apply success callback - FIXED
-  const handleApplySuccess = (jobId, newApplication) => {
-    console.log(`Application success for job ${jobId}`, newApplication);
+  // Sample jobs for fallback - useMemo to prevent recreation
+  const getSampleJobs = useCallback(() => {
+    return [
+      {
+        _id: "1",
+        jobTitle: "Frontend Developer",
+        companyName: "Tech Solutions Inc.",
+        location: "Ahmedabad, Gujarat",
+        jobType: "Full-time",
+        experienceLevel: "Mid Level",
+        salary: "₹6-8 LPA",
+        jobDescription: "React.js, JavaScript, HTML/CSS required. 2+ years experience.",
+        status: "Active",
+        views: 150,
+        applications: 5,
+        postedDate: new Date().toISOString(),
+        isFeatured: true
+      },
+      {
+        _id: "2",
+        jobTitle: "Backend Engineer",
+        companyName: "Data Systems Ltd.",
+        location: "Remote",
+        jobType: "Full-time",
+        experienceLevel: "Senior Level",
+        salary: "₹8-12 LPA",
+        jobDescription: "Node.js, MongoDB, Express.js. Work from anywhere in India.",
+        status: "Active",
+        views: 120,
+        applications: 3,
+        postedDate: new Date().toISOString(),
+        isFeatured: true
+      },
+      {
+        _id: "3",
+        jobTitle: "UX/UI Designer",
+        companyName: "Creative Minds",
+        location: "Surat, Gujarat",
+        jobType: "Part-time",
+        experienceLevel: "Entry Level",
+        salary: "₹4-6 LPA",
+        jobDescription: "Figma, Adobe XD, Prototyping skills required.",
+        status: "Active",
+        views: 80,
+        applications: 2,
+        postedDate: new Date().toISOString(),
+        isFeatured: false
+      },
+      {
+        _id: "4",
+        jobTitle: "Marketing Manager",
+        companyName: "Growth Experts",
+        location: "Mumbai",
+        jobType: "Full-time",
+        experienceLevel: "Mid Level",
+        salary: "₹7-9 LPA",
+        jobDescription: "Digital marketing, SEO, Social Media experience.",
+        status: "Active",
+        views: 95,
+        applications: 4,
+        postedDate: new Date().toISOString(),
+        isFeatured: true
+      },
+      {
+        _id: "5",
+        jobTitle: "Data Analyst",
+        companyName: "Analytics Pro",
+        location: "Remote",
+        jobType: "Contract",
+        experienceLevel: "Mid Level",
+        salary: "₹5-7 LPA",
+        jobDescription: "Python, SQL, Data Visualization tools.",
+        status: "Active",
+        views: 110,
+        applications: 6,
+        postedDate: new Date().toISOString(),
+        isFeatured: false
+      },
+      {
+        _id: "6",
+        jobTitle: "Mobile App Developer",
+        companyName: "App Innovators",
+        location: "Rajkot, Gujarat",
+        jobType: "Full-time",
+        experienceLevel: "Mid Level",
+        salary: "₹5-7 LPA",
+        jobDescription: "React Native, Android/iOS development.",
+        status: "Active",
+        views: 75,
+        applications: 3,
+        postedDate: new Date().toISOString(),
+        isFeatured: true
+      }
+    ];
+  }, []);
+
+  // Handle apply success callback - memoized
+  const handleApplySuccess = useCallback((jobId, newApplication) => {
+    console.log(`✅ Application success for job ${jobId}`, newApplication);
     
     setJobs(prevJobs => 
       prevJobs.map(job => {
         if (job._id === jobId) {
-          // Get current applications
           const currentApplications = job.jobApplications || [];
-          
-          // Add the new application
-          const updatedJobApplications = [
-            ...currentApplications,
-            newApplication
-          ];
+          const updatedJobApplications = [...currentApplications, newApplication];
           
           return {
             ...job,
@@ -105,18 +252,49 @@ const JobList = () => {
         return job;
       })
     );
-  };
+  }, []);
 
-  const handleFilterChange = (e) => {
+  // Filter jobs - memoized for performance
+  const filteredJobs = useMemo(() => {
+    return jobs.filter((job) => {
+      const matchSearch = filters.search === "" || 
+        job.jobTitle?.toLowerCase().includes(filters.search.toLowerCase()) ||
+        job.companyName?.toLowerCase().includes(filters.search.toLowerCase()) ||
+        job.location?.toLowerCase().includes(filters.search.toLowerCase());
+      
+      const matchType = filters.jobType === "" || 
+        job.jobType?.toLowerCase() === filters.jobType.toLowerCase();
+      
+      const matchLocation = filters.location === "" || 
+        job.location?.toLowerCase().includes(filters.location.toLowerCase());
+      
+      const matchExperience = filters.experienceLevel === "" || 
+        job.experienceLevel?.toLowerCase() === filters.experienceLevel.toLowerCase();
+      
+      return matchSearch && matchType && matchLocation && matchExperience;
+    });
+  }, [jobs, filters]);
+
+  // Pagination - memoized
+  const { currentJobs, totalPages } = useMemo(() => {
+    const indexOfLastJob = currentPage * jobsPerPage;
+    const indexOfFirstJob = indexOfLastJob - jobsPerPage;
+    const currentJobs = filteredJobs.slice(indexOfFirstJob, indexOfLastJob);
+    const totalPages = Math.ceil(filteredJobs.length / jobsPerPage);
+    
+    return { currentJobs, totalPages };
+  }, [currentPage, filteredJobs]);
+
+  const handleFilterChange = useCallback((e) => {
     const { name, value } = e.target;
     setFilters(prev => ({
       ...prev,
       [name]: value
     }));
     setCurrentPage(1);
-  };
+  }, []);
 
-  const handleResetFilters = () => {
+  const handleResetFilters = useCallback(() => {
     setFilters({
       search: "",
       jobType: "",
@@ -125,37 +303,18 @@ const JobList = () => {
     });
     setCurrentPage(1);
     navigate("/jobs");
-  };
+  }, [navigate]);
 
-  // Filter jobs
-  const filteredJobs = jobs.filter((job) => {
-    const matchSearch = filters.search === "" || 
-      job.jobTitle?.toLowerCase().includes(filters.search.toLowerCase()) ||
-      job.companyName?.toLowerCase().includes(filters.search.toLowerCase()) ||
-      job.location?.toLowerCase().includes(filters.search.toLowerCase());
-    
-    const matchType = filters.jobType === "" || 
-      job.jobType?.toLowerCase() === filters.jobType.toLowerCase();
-    
-    const matchLocation = filters.location === "" || 
-      job.location?.toLowerCase().includes(filters.location.toLowerCase());
-    
-    const matchExperience = filters.experienceLevel === "" || 
-      job.experienceLevel?.toLowerCase() === filters.experienceLevel.toLowerCase();
-    
-    return matchSearch && matchType && matchLocation && matchExperience;
-  });
-
-  // Pagination
-  const indexOfLastJob = currentPage * jobsPerPage;
-  const indexOfFirstJob = indexOfLastJob - jobsPerPage;
-  const currentJobs = filteredJobs.slice(indexOfFirstJob, indexOfLastJob);
-  const totalPages = Math.ceil(filteredJobs.length / jobsPerPage);
-
-  const handlePageChange = (pageNumber) => {
+  const handlePageChange = useCallback((pageNumber) => {
     setCurrentPage(pageNumber);
     window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+  }, []);
+
+  // Handle filter button clicks
+  const handleFilterButtonClick = useCallback((type) => {
+    setFilters(prev => ({ ...prev, jobType: type }));
+    setCurrentPage(1);
+  }, []);
 
   if (loading) {
     return (
@@ -164,7 +323,11 @@ const JobList = () => {
           <div className="spinner-border text-primary" style={{width: "3rem", height: "3rem"}} role="status">
             <span className="visually-hidden">Loading...</span>
           </div>
-          <p className="mt-3">Loading jobs...</p>
+          <p className="mt-3">Loading jobs from {API_BASE_URL}...</p>
+          <small className="text-muted">
+            Backend URL: {API_BASE_URL}<br/>
+            જો લાંબો સમય લાગે તો refresh કરો.
+          </small>
         </div>
       </div>
     );
@@ -173,6 +336,18 @@ const JobList = () => {
   return (
     <div className="job-list-page">
       <div className="container py-5">
+        {/* Connection Info */}
+        <div className="alert alert-info mb-4">
+          <small>
+            <strong>🔧 API Status:</strong> {API_BASE_URL}<br/>
+            {API_BASE_URL.includes('localhost') && (
+              <span className="text-muted">
+                Using local development server. Backend must be running on port 5000.
+              </span>
+            )}
+          </small>
+        </div>
+
         <div className="row">
           <div className="col-lg-3 mb-4">
             {/* Filters Sidebar */}
@@ -255,7 +430,8 @@ const JobList = () => {
                     Your Profile
                   </h6>
                   <div className="d-flex align-items-center mb-3">
-                    <div className="user-avatar-small me-3">
+                    <div className="user-avatar-small me-3 bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" 
+                      style={{width: '40px', height: '40px', fontSize: '16px'}}>
                       {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
                     </div>
                     <div>
@@ -270,6 +446,27 @@ const JobList = () => {
                 </div>
               </div>
             )}
+
+            {/* API Info Card */}
+            <div className="card shadow-sm mt-4 border-info">
+              <div className="card-body">
+                <h6 className="fw-bold mb-3">
+                  <i className="bi bi-wrench me-2"></i>
+                  API Information
+                </h6>
+                <small className="text-muted">
+                  <strong>Endpoint:</strong> {API_BASE_URL}/api/jobs<br/>
+                  <strong>Status:</strong> {jobs.length > 0 ? 'Connected' : 'Using Sample Data'}<br/>
+                  <strong>Jobs Found:</strong> {filteredJobs.length}
+                </small>
+                <button 
+                  className="btn btn-sm btn-outline-info w-100 mt-3"
+                  onClick={() => window.open(`${API_BASE_URL}/api/jobs/active`, '_blank')}
+                >
+                  Test Jobs API
+                </button>
+              </div>
+            </div>
           </div>
           
           <div className="col-lg-9">
@@ -283,7 +480,7 @@ const JobList = () => {
               <div className="filter-buttons">
                 <button 
                   className={`btn btn-sm ${filters.jobType === '' ? 'btn-primary' : 'btn-outline-primary'}`}
-                  onClick={() => setFilters(prev => ({ ...prev, jobType: '' }))}
+                  onClick={() => handleFilterButtonClick('')}
                 >
                   All
                 </button>
@@ -291,7 +488,7 @@ const JobList = () => {
                   <button
                     key={type}
                     className={`btn btn-sm ms-2 ${filters.jobType === type ? 'btn-primary' : 'btn-outline-primary'}`}
-                    onClick={() => setFilters(prev => ({ ...prev, jobType: type }))}
+                    onClick={() => handleFilterButtonClick(type)}
                   >
                     {type}
                   </button>
@@ -302,7 +499,10 @@ const JobList = () => {
             {/* Error Message */}
             {error && (
               <div className="alert alert-warning alert-dismissible fade show mb-4" role="alert">
-                {error}
+                <div className="d-flex align-items-center">
+                  <i className="bi bi-exclamation-triangle-fill me-2"></i>
+                  <div className="flex-grow-1">{error}</div>
+                </div>
                 <button
                   type="button"
                   className="btn-close"
@@ -386,12 +586,20 @@ const JobList = () => {
                         ? "Try adjusting your search criteria" 
                         : "No jobs available at the moment. Check back soon!"}
                     </p>
-                    <button 
-                      className="btn btn-primary"
-                      onClick={handleResetFilters}
-                    >
-                      Clear All Filters
-                    </button>
+                    <div className="d-flex gap-3 justify-content-center">
+                      <button 
+                        className="btn btn-primary"
+                        onClick={handleResetFilters}
+                      >
+                        Clear All Filters
+                      </button>
+                      <button 
+                        className="btn btn-outline-secondary"
+                        onClick={fetchJobs}
+                      >
+                        Retry Loading
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -403,7 +611,7 @@ const JobList = () => {
                 <div className="d-flex align-items-center">
                   <i className="bi bi-info-circle-fill me-3 fs-4"></i>
                   <div>
-                    <h6 className="mb-1">Upload Your Resume</h6>
+                    <h6 className="mb-1">📄 Upload Your Resume</h6>
                     <p className="mb-0">
                       You need to upload your resume before applying for jobs. 
                       <a href="/profile" className="alert-link ms-1">Go to Profile</a>
@@ -419,4 +627,4 @@ const JobList = () => {
   );
 };
 
-export default JobList;
+export default React.memo(JobList);
